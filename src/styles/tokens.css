@@ -1,0 +1,253 @@
+/* tokens.css — the design token layer. Spec: `design/DESIGN.md`.
+ *
+ * Order is load-bearing: @custom-variant -> base primitives -> @theme (semantic,
+ * light) -> .dark (semantic overrides).
+ *
+ * Why the semantic layer lives inside @theme rather than in a separate :root block:
+ * Tailwind emits @theme content into :root, so the compiled result is the three-layer
+ * shape DESIGN.md specifies. Routing a --color-* token through a differently-named
+ * :root variable does not work — plain @theme substitutes it once, on :root, and
+ * descendants inherit the light value however .dark is written. Overriding the
+ * --color-* token itself in .dark is what makes the theme switch. Never `@theme
+ * inline` here either: DESIGN.md forbids it, and this shape does not need it.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+ * Layer 1 — base / primitive.
+ * Raw values, no meaning attached. Defined once, never overridden by a theme.
+ * NEVER reference these from a component — a component that reaches for
+ * --gray-200 cannot respond to dark mode.
+ * ------------------------------------------------------------------------ */
+
+:root {
+  --gray-0: #ffffff;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+  --gray-950: #020617;
+
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-300: #93c5fd;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+  --blue-950: #172554;
+
+  --red-50: #fef2f2;
+  --red-300: #fca5a5;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+  --red-950: #450a0a;
+
+  --amber-50: #fffbeb;
+  --amber-300: #fcd34d;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --amber-700: #b45309;
+  --amber-950: #451a03;
+
+  --green-50: #f0fdf4;
+  --green-300: #86efac;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --green-700: #15803d;
+  --green-950: #052e16;
+}
+
+/* ---------------------------------------------------------------------------
+ * Layer 2 — semantic, light theme. This is the layer components reference.
+ * ------------------------------------------------------------------------ */
+
+@theme {
+  /* Families. Noto Sans Thai carries Latin acceptably, so one stack covers both
+   * (ADR-009 — every user-facing string is Thai). */
+  --font-sans: var(--font-noto-sans-thai), "Inter", system-ui, sans-serif;
+
+  /* Surfaces and text */
+  --color-bg: var(--gray-50);
+  --color-surface: var(--gray-0);
+  --color-surface-raised: var(--gray-0);
+  --color-surface-sunken: var(--gray-100);
+  --color-border: var(--gray-200);
+  --color-border-strong: var(--gray-300);
+  --color-text-primary: var(--gray-900);
+  --color-text-secondary: var(--gray-600);
+  --color-text-muted: var(--gray-400);
+  --color-text-inverse: var(--gray-0);
+
+  /* Accent. Ours means "primary action / link", per DESIGN.md. shadcn's own
+   * `accent` means "subtle hover surface" — a copied shadcn component that
+   * writes `bg-accent` gets edited to `bg-surface-sunken` at review. */
+  --color-accent: var(--blue-600);
+  --color-accent-hover: var(--blue-700);
+  --color-accent-subtle: var(--blue-50);
+  --color-accent-fg: var(--gray-0);
+
+  /* State. These are business rules, not styling preferences — see DESIGN.md
+   * "Semantic colour rules that are business rules" (BR03, BR12, BR20). */
+  --color-danger: var(--red-600);
+  --color-danger-subtle: var(--red-50);
+  --color-danger-fg: var(--gray-0);
+  --color-warning: var(--amber-600);
+  --color-warning-subtle: var(--amber-50);
+  --color-success: var(--green-600);
+  --color-success-subtle: var(--green-50);
+
+  /* Locked chrome is deliberately identical in both themes, so a locked record
+   * is never mistaken for a theme artefact (BR15). --color-locked is therefore
+   * absent from the .dark block below, on purpose. */
+  --color-locked: var(--gray-500);
+  --color-locked-subtle: var(--gray-100);
+
+  --color-focus-ring: var(--blue-600);
+
+  /* Type scale. Line-heights are one step looser than a Latin-only scale
+   * because Thai tone marks stack above the baseline. Do not tighten. */
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--font-weight: 600;
+  --text-h1: 1.5rem;
+  --text-h1--line-height: 2.125rem;
+  --text-h1--font-weight: 600;
+  --text-h2: 1.25rem;
+  --text-h2--line-height: 1.875rem;
+  --text-h2--font-weight: 600;
+  --text-h3: 1rem;
+  --text-h3--line-height: 1.625rem;
+  --text-h3--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.625rem;
+  --text-body--font-weight: 400;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.375rem;
+  --text-body-sm--font-weight: 400;
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.25rem;
+  --text-label--font-weight: 500;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.125rem;
+  --text-caption--font-weight: 400;
+
+  /* Numeric steps. Separate from the text scale because numbers are the
+   * product. Pair every one of these with `tabular-nums` — a column of kg
+   * values that does not align is a defect. */
+  --text-num-xl: 2rem;
+  --text-num-xl--line-height: 2.5rem;
+  --text-num-xl--font-weight: 600;
+  --text-num-lg: 1.5rem;
+  --text-num-lg--line-height: 2rem;
+  --text-num-lg--font-weight: 600;
+  --text-num-md: 1rem;
+  --text-num-md--line-height: 1.5rem;
+  --text-num-md--font-weight: 600;
+  --text-num-sm: 0.875rem;
+  --text-num-sm--line-height: 1.25rem;
+  --text-num-sm--font-weight: 500;
+
+  /* Radii. Spacing is not redefined: DESIGN.md's space-1…space-16 are exactly
+   * Tailwind's default 4pt scale, and a second copy would be a second source
+   * of truth. Same for the 44/48/56 touch sizes — size-11 / size-12 / size-14. */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  /* shadcn compatibility. A shadcn component is copied source that reads these
+   * names; mapping them onto our semantic layer is what keeps `shadcn add`
+   * output on-palette instead of on shadcn's neutral defaults. */
+  --color-background: var(--gray-50);
+  --color-foreground: var(--gray-900);
+  --color-card: var(--gray-0);
+  --color-card-foreground: var(--gray-900);
+  --color-popover: var(--gray-0);
+  --color-popover-foreground: var(--gray-900);
+  --color-primary: var(--blue-600);
+  --color-primary-foreground: var(--gray-0);
+  --color-secondary: var(--gray-100);
+  --color-secondary-foreground: var(--gray-900);
+  --color-muted: var(--gray-100);
+  --color-muted-foreground: var(--gray-600);
+  --color-destructive: var(--red-600);
+  --color-destructive-foreground: var(--gray-0);
+  --color-input: var(--gray-300);
+  --color-ring: var(--blue-600);
+}
+
+/* ---------------------------------------------------------------------------
+ * Layer 2 — dark overrides. Only what changes. A grey is a grey in both
+ * themes; what changes is which grey plays which role.
+ * ------------------------------------------------------------------------ */
+
+.dark {
+  --color-bg: var(--gray-950);
+  --color-surface: var(--gray-900);
+  --color-surface-raised: var(--gray-800);
+  --color-surface-sunken: var(--gray-950);
+  --color-border: var(--gray-700);
+  --color-border-strong: var(--gray-600);
+  --color-text-primary: var(--gray-50);
+  --color-text-secondary: var(--gray-400);
+  --color-text-muted: var(--gray-500);
+  --color-text-inverse: var(--gray-950);
+
+  --color-accent: var(--blue-500);
+  --color-accent-hover: var(--blue-300);
+  --color-accent-subtle: var(--blue-950);
+  --color-accent-fg: var(--gray-950);
+
+  --color-danger: var(--red-500);
+  --color-danger-subtle: var(--red-950);
+  --color-danger-fg: var(--gray-50);
+  --color-warning: var(--amber-500);
+  --color-warning-subtle: var(--amber-950);
+  --color-success: var(--green-500);
+  --color-success-subtle: var(--green-950);
+
+  /* --color-locked is NOT overridden. See the light block. */
+  --color-locked-subtle: var(--gray-800);
+
+  --color-focus-ring: var(--blue-300);
+
+  --color-background: var(--gray-950);
+  --color-foreground: var(--gray-50);
+  --color-card: var(--gray-900);
+  --color-card-foreground: var(--gray-50);
+  --color-popover: var(--gray-800);
+  --color-popover-foreground: var(--gray-50);
+  --color-primary: var(--blue-500);
+  --color-primary-foreground: var(--gray-950);
+  --color-secondary: var(--gray-800);
+  --color-secondary-foreground: var(--gray-50);
+  --color-muted: var(--gray-800);
+  --color-muted-foreground: var(--gray-400);
+  --color-destructive: var(--red-500);
+  --color-destructive-foreground: var(--gray-50);
+  --color-input: var(--gray-600);
+  --color-ring: var(--blue-300);
+}
+
+/* shadcn's copied `cva` sources also read a few bare names directly, inside
+ * color-mix() and arbitrary values. One block covers both themes: on a .dark
+ * element the right-hand side resolves to the dark value. */
+:root,
+.dark {
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --primary: var(--color-primary);
+  --secondary: var(--color-secondary);
+  --muted: var(--color-muted);
+  --destructive: var(--color-destructive);
+  --border: var(--color-border);
+  --input: var(--color-input);
+  --ring: var(--color-ring);
+}
