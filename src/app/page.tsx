@@ -1,6 +1,8 @@
 /* Placeholder home page. Replaced by the real shell when the route groups land
  * (`(auth)` / `(owner)` / `(cm)` / `(branch)`). It exists now only so the token
- * layer is visible in a browser. */
+ * layer and the shadcn primitives are visible in a browser (ADR-022). */
+
+import { Button } from "@/components/ui/button";
 
 const states = [
   { label: "ปกติ", className: "bg-success-subtle text-success" },
@@ -37,6 +39,14 @@ export default function Home() {
             {state.label}
           </span>
         ))}
+      </section>
+
+      {/* ponytail: one shadcn primitive rendered so the CLI → cn() → token chain
+          is provably wired. Real screens replace this whole page. */}
+      <section className="flex flex-wrap items-center gap-2">
+        <Button>บันทึก</Button>
+        <Button variant="outline">ยกเลิก</Button>
+        <Button variant="destructive">ลบ</Button>
       </section>
     </main>
   );
