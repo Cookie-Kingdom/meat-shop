@@ -22,14 +22,23 @@ trap cleanup EXIT
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 docker run -d --name "$CONTAINER" -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=meatshop \
   postgres:17 >/dev/null || { echo "FAIL  could not start postgres:17"; exit 1; }
-until docker exec "$CONTAINER" pg_isready -U postgres -q 2>/dev/null; do sleep 1; done
+# -d meatshop, not the default `postgres` db: the image accepts connections on `postgres`
+# a moment before the initdb script has created ours, and the harness then fails for no
+# reason anyone can see.
+until docker exec "$CONTAINER" pg_isready -U postgres -d meatshop -q 2>/dev/null; do sleep 1; done
 
 # The auth schema and the anon/authenticated roles that Supabase supplies for free.
 if ! $PSQL < supabase/tests/local_harness.sql >/dev/null 2>&1; then
   echo "FAIL  local_harness.sql"; exit 1
 fi
 
-for f in supabase/migrations/*.sql; do
+# migrations -> functions -> policies, in that order and for that reason: a policy names a
+# helper, and a helper names a table. `migrations/` is numbered and applied once; the other
+# two folders are the current statement of the rule and are written idempotently
+# (`create or replace function`, `drop policy if exists` then `create policy`), so
+# re-applying them is a no-op rather than an error.
+for f in supabase/migrations/*.sql supabase/functions/*.sql supabase/policies/*.sql; do
+  [ -e "$f" ] || continue
   if out=$($PSQL < "$f" 2>&1); then
     echo "PASS  $(basename "$f")"
   else
