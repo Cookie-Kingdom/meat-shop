@@ -111,5 +111,5 @@ begin
 end $$;
 
 -- `authenticated` may call it; the L1 test inside decides. anon holds nothing.
-revoke execute on function public.fn_reverse_ledger_entry(uuid, uuid, numeric, text) from public;
+revoke execute on function public.fn_reverse_ledger_entry(uuid, uuid, numeric, text) from public, anon, authenticated;
 grant  execute on function public.fn_reverse_ledger_entry(uuid, uuid, numeric, text) to authenticated;

@@ -156,5 +156,5 @@ begin
   );
 end $$;
 
-revoke execute on function public.fn_open_daily_report(uuid, uuid, date) from public;
+revoke execute on function public.fn_open_daily_report(uuid, uuid, date) from public, anon, authenticated;
 grant  execute on function public.fn_open_daily_report(uuid, uuid, date) to authenticated;

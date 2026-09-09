@@ -28,4 +28,5 @@ where b.item_type = 'SMOKED_MEAT'
   and b.balance_qty > 0
 order by g.smoke_date asc, b.lot_id asc;
 
-grant select on public.v_smoke_group_available to authenticated;
+revoke all    on public.v_smoke_group_available from anon, authenticated;
+grant  select on public.v_smoke_group_available to   authenticated;

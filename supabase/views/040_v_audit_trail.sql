@@ -83,4 +83,5 @@ comment on view public.v_audit_trail is
   'INSERT or DELETE. changed_at is audit_log.created_at, never event_date (ADR-007). '
   'L1 only, enforced in the WHERE (R34) — audit_log itself stays deny-all.';
 
-grant select on public.v_audit_trail to authenticated;
+revoke all    on public.v_audit_trail from anon, authenticated;
+grant  select on public.v_audit_trail to   authenticated;

@@ -74,4 +74,5 @@ comment on view public.v_po_outstanding is
   'is a CM cross-check only (R16a) — the loss base and yield divisor is '
   'lots.foodiva_sent_weight_kg (BR03, ADR-011). L1 only, enforced in the WHERE (R34).';
 
-grant select on public.v_po_outstanding to authenticated;
+revoke all    on public.v_po_outstanding from anon, authenticated;
+grant  select on public.v_po_outstanding to   authenticated;

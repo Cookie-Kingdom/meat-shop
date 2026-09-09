@@ -28,7 +28,12 @@
 -- ^ref-12 is supposed to build deliberately, as a role-scoped view. SECURITY DEFINER
 -- functions run as the owner, so every fn_record_* can call this; a session cannot.
 --
--- Covered by supabase/tests/config_read_test.sql (TC-01 … TC-10).
+-- ^ref-64: the grant is no longer the ONLY enforcement. A revoke that turned out to be
+-- inert against the live project is not a posture, so the body refuses a claimless caller
+-- too. Every legitimate caller is a SECURITY DEFINER fn_* running with the caller's
+-- auth.uid() intact, so nothing that resolves an actor first loses anything.
+--
+-- Covered by supabase/tests/config_read_test.sql (TC-01 … TC-10, TC-11).
 
 create or replace function public.fn_config_value(
   p_key         text,
@@ -43,6 +48,12 @@ as $$
 declare
   v_row config_settings;
 begin
+  -- Defence in depth for the revoke, not a replacement for it (^ref-64). ADR-004's "RLS
+  -- decides" does not reach inside a SECURITY DEFINER function, so this one decides.
+  if auth.uid() is null then
+    raise exception 'NO_ACTOR: fn_config_value is a primitive for definer functions, not a read path (R31)';
+  end if;
+
   if p_event_date is null then
     raise exception 'CONFIG_EVENT_DATE_REQUIRED: resolution takes the event date, never now() (R12)';
   end if;
@@ -76,6 +87,8 @@ as $$
 declare
   v_row config_settings;
 begin
+  -- NO_ACTOR is inherited, not repeated: this is the first statement of the body and it
+  -- reaches nothing before the guard fires. One guard, one place it can rot. (^ref-64)
   v_row := fn_config_value(p_key, p_event_date, p_location_id);
 
   -- A text or jsonb key asked for as a number arrives as null otherwise, and a null rate
@@ -88,5 +101,5 @@ begin
 end $$;
 
 -- No grant. See the header: these two are primitives for definer functions, not a read path.
-revoke execute on function public.fn_config_value(text, date, uuid)   from public;
-revoke execute on function public.fn_config_numeric(text, date, uuid) from public;
+revoke execute on function public.fn_config_value(text, date, uuid)   from public, anon, authenticated;
+revoke execute on function public.fn_config_numeric(text, date, uuid) from public, anon, authenticated;

@@ -21,5 +21,5 @@ as $$
   select role from profiles where id = auth.uid() and is_active
 $$;
 
-revoke execute on function public.fn_current_role() from public;
+revoke execute on function public.fn_current_role() from public, anon, authenticated;
 grant  execute on function public.fn_current_role() to authenticated;

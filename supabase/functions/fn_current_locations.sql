@@ -25,5 +25,5 @@ as $$
      and p.is_active
 $$;
 
-revoke execute on function public.fn_current_locations() from public;
+revoke execute on function public.fn_current_locations() from public, anon, authenticated;
 grant  execute on function public.fn_current_locations() to authenticated;

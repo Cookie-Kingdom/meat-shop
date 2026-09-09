@@ -36,4 +36,5 @@ where fn_current_role() = 'L1_OWNER'
 group by l.item_type, l.product_id, l.packaging_item_id, l.lot_id, l.smoke_date_group_id,
          l.location_id, l.stock_state;
 
-grant select on public.v_stock_balance to authenticated;
+revoke all    on public.v_stock_balance from anon, authenticated;
+grant  select on public.v_stock_balance to   authenticated;

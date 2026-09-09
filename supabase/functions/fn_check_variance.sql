@@ -62,5 +62,5 @@ begin
   end if;
 end $$;
 
-revoke execute on function public.fn_check_variance(numeric, numeric, text, numeric) from public;
+revoke execute on function public.fn_check_variance(numeric, numeric, text, numeric) from public, anon, authenticated;
 grant  execute on function public.fn_check_variance(numeric, numeric, text, numeric) to authenticated;

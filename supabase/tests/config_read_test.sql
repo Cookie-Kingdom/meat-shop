@@ -1,6 +1,6 @@
 -- Failure-case tests for card ^ref-11 — fn_config_value / fn_config_numeric.
 --
--- Covers TC-01 … TC-10 from TDD-config-layer.md.
+-- Covers TC-01 … TC-10 from TDD-config-layer.md, plus TC-11 (^ref-64).
 --
 -- Each assert is a way resolution fails silently rather than loudly:
 --   * a rate entered today moves a figure that was settled last month (BR23, ADR-006)
@@ -31,6 +31,25 @@ begin
     returning id into v_br_a;
   insert into locations (code, name_th, kind) values ('BRB', 'สาขาบี', 'BRANCH')
     returning id into v_br_b;
+
+  --------------------------------------------------------------------------------- TC-11
+  -- ^ref-64. Before any claim is set, the resolver refuses to answer at all. The revoke on
+  -- these two functions was the whole enforcement until this card, and a revoke turned out
+  -- to be something that can be silently inert. This is the second mechanism, and it is
+  -- asserted BEFORE the claim is set because after it every other TC needs one.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_config_numeric('brine_pct_of_meat', date '2026-07-01');
+  exception when others then
+    v_err := sqlerrm;
+    v_ok  := v_err like '%NO_ACTOR%';
+  end;
+  assert v_ok, format('TC-11: a claimless caller reached the config resolver (%s)',
+                      coalesce(v_err, 'no exception at all'));
+
+  -- Every TC below resolves as a real actor. A definer caller runs with the caller's
+  -- auth.uid() intact, so this is the shape fn_record_* will be in, not a test-only prop.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_actor)::text, true);
 
   --------------------------------------------------------------------------------- TC-01
   -- The latest row at or before the date wins.

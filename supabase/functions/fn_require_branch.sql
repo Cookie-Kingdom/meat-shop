@@ -69,4 +69,4 @@ begin
   return v_actor;
 end $$;
 
-revoke execute on function public.fn_require_branch(uuid) from public;
+revoke execute on function public.fn_require_branch(uuid) from public, anon, authenticated;
