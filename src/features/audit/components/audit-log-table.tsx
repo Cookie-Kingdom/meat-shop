@@ -1,5 +1,10 @@
 import { cva } from "class-variance-authority";
 
+import {
+  ResponsiveTable,
+  type Column,
+} from "@/components/shared/responsive-table";
+
 /* AuditLogTable — OW 11, the audit half (card ^ref-09).
  *
  * Contract: `design/DESIGN-CONTRACTS.md` → five columns, ผู้แก้ · เวลา · Field · ค่าเดิม ·
@@ -7,14 +12,11 @@ import { cva } from "class-variance-authority";
  * audit trail is the record of what other screens did, and a screen that can edit it is
  * the one thing ^ref-06's append-only guards exist to make impossible.
  *
- * Cards below `md:`, table at and above. That is not a fallback — five columns do not fit
- * at 360px, and `LAYOUT-SKELETONS.md` S8 says the card mode is the real design here.
- *
- * ponytail: this is not the shared `ResponsiveTable` organism from COMPONENT-INVENTORY.md.
- * That organism is listed as shared across OW 03, OW 08, OW 10, OW 11 and BR 08, and four
- * of those five screens do not exist — its `columns`/`priority` props would be invented
- * from one caller. Extract it at OW 10 (^ref-12), the second S8 screen and the first real
- * evidence of what the props need to be.
+ * Rendered through the shared `ResponsiveTable`, extracted at OW 10 (^ref-12) as ^ref-09's
+ * plan said it would be. This file went from an inline card list plus an inline table to a
+ * column set; what it kept is everything that is about the audit trail specifically — the
+ * badge, the three clocks, the null/empty distinction — and what it gave up is the second
+ * copy of "cards below md:, table above".
  */
 
 export type AuditEntry = {
@@ -89,6 +91,8 @@ function ActionBadge({ action }: { action: string }) {
   );
 }
 
+/* null and "" are different facts. A field cleared to the empty string is an edit somebody
+ * made; a null is a column that was never there. */
 function Value({ value }: { value: string | null }) {
   if (value === null) return <span className="text-text-muted">—</span>;
   if (value === "") return <span className="text-text-muted">(ว่าง)</span>;
@@ -99,117 +103,84 @@ function fieldLabel(entry: AuditEntry) {
   return entry.field_name ?? WHOLE_ROW_LABEL[entry.action] ?? entry.action;
 }
 
+const COLUMNS: Column<AuditEntry>[] = [
+  {
+    id: "actor",
+    header: "ผู้แก้",
+    priority: 1,
+    cell: (e) => (
+      <>
+        <span className="block">{e.actor_name ?? "ไม่ทราบผู้แก้"}</span>
+        <span className="block text-caption text-text-muted">
+          {e.actor_role ?? "—"}
+        </span>
+      </>
+    ),
+  },
+  {
+    id: "changed_at",
+    header: "เวลา",
+    numeric: true,
+    className: "whitespace-nowrap text-text-secondary",
+    cell: (e) => BANGKOK.format(new Date(e.changed_at)),
+  },
+  {
+    id: "field",
+    header: "Field",
+    cell: (e) => (
+      <>
+        <span className="block text-text-primary">{fieldLabel(e)}</span>
+        <span className="mt-1 flex items-center gap-2 text-caption text-text-muted">
+          <ActionBadge action={e.action} />
+          {e.table_name}
+        </span>
+      </>
+    ),
+  },
+  /* `title` rather than a tap handler: the full value is one native tooltip away and costs
+   * no client bundle. The card mode shows it in full — the worst case is two long Thai
+   * strings (a Remark edit) and a card has the room a 360px table cell does not. */
+  {
+    id: "old",
+    header: "ค่าเดิม",
+    className: "max-w-[14rem] truncate",
+    cell: (e) => (
+      <span title={e.old_value ?? undefined}>
+        <Value value={e.old_value} />
+      </span>
+    ),
+  },
+  {
+    id: "new",
+    header: "ค่าใหม่",
+    className: "max-w-[14rem] truncate",
+    cell: (e) => (
+      <span title={e.new_value ?? undefined}>
+        <Value value={e.new_value} />
+      </span>
+    ),
+  },
+  {
+    id: "reason",
+    header: "เหตุผล",
+    cell: (e) =>
+      e.reason ? e.reason : <span className="text-text-muted">—</span>,
+  },
+];
+
 export function AuditLogTable({ entries }: { entries: AuditEntry[] }) {
-  if (entries.length === 0) {
-    return (
-      <p className="rounded-lg border border-border bg-surface p-6 text-center text-body text-text-secondary">
-        ไม่พบรายการที่ตรงกับตัวกรอง
-      </p>
-    );
-  }
-
   return (
-    <>
-      {/* Cards, below md:. Both values in full — the worst case is two long Thai strings
-          (a Remark edit) and a card has the room a 360px table cell does not. */}
-      <ul className="flex flex-col gap-3 md:hidden">
-        {entries.map((entry) => (
-          <li
-            key={`${entry.audit_id}-${entry.field_name ?? ""}`}
-            className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <span className="text-label text-text-primary">
-                {entry.actor_name ?? "ไม่ทราบผู้แก้"}
-              </span>
-              <ActionBadge action={entry.action} />
-            </div>
-            <span className="text-caption text-text-secondary">
-              {BANGKOK.format(new Date(entry.changed_at))} · {entry.table_name}
-            </span>
-            <span className="text-label text-text-primary">
-              {fieldLabel(entry)}
-            </span>
-            <dl className="flex flex-col gap-1 text-body-sm">
-              <div className="flex gap-2">
-                <dt className="shrink-0 text-text-secondary">ค่าเดิม</dt>
-                <dd className="break-words text-text-primary">
-                  <Value value={entry.old_value} />
-                </dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="shrink-0 text-text-secondary">ค่าใหม่</dt>
-                <dd className="break-words text-text-primary">
-                  <Value value={entry.new_value} />
-                </dd>
-              </div>
-            </dl>
-            {entry.reason ? (
-              <p className="text-caption text-text-secondary">
-                เหตุผล: {entry.reason}
-              </p>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-
-      {/* Table, md: and up. Owns its own horizontal overflow (S8). */}
-      <div className="hidden overflow-x-auto rounded-lg border border-border bg-surface md:block">
-        <table className="w-full min-w-[52rem] text-body-sm">
-          <thead className="border-b border-border text-label text-text-secondary">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">ผู้แก้</th>
-              <th className="px-4 py-3 text-left font-medium">เวลา</th>
-              <th className="px-4 py-3 text-left font-medium">Field</th>
-              <th className="px-4 py-3 text-left font-medium">ค่าเดิม</th>
-              <th className="px-4 py-3 text-left font-medium">ค่าใหม่</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry) => (
-              <tr
-                key={`${entry.audit_id}-${entry.field_name ?? ""}`}
-                className="border-b border-border last:border-b-0"
-              >
-                <td className="px-4 py-3 align-top text-text-primary">
-                  <span className="block">
-                    {entry.actor_name ?? "ไม่ทราบผู้แก้"}
-                  </span>
-                  <span className="block text-caption text-text-muted">
-                    {entry.actor_role ?? "—"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 align-top whitespace-nowrap text-text-secondary tabular-nums">
-                  {BANGKOK.format(new Date(entry.changed_at))}
-                </td>
-                <td className="px-4 py-3 align-top">
-                  <span className="block text-text-primary">
-                    {fieldLabel(entry)}
-                  </span>
-                  <span className="mt-1 flex items-center gap-2 text-caption text-text-muted">
-                    <ActionBadge action={entry.action} />
-                    {entry.table_name}
-                  </span>
-                </td>
-                {/* `title` rather than a tap handler: the full value is one native tooltip
-                    away and costs no client bundle. The card mode shows it in full. */}
-                <td
-                  className="max-w-[14rem] truncate px-4 py-3 align-top text-text-primary"
-                  title={entry.old_value ?? undefined}
-                >
-                  <Value value={entry.old_value} />
-                </td>
-                <td
-                  className="max-w-[14rem] truncate px-4 py-3 align-top text-text-primary"
-                  title={entry.new_value ?? undefined}
-                >
-                  <Value value={entry.new_value} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+    <ResponsiveTable
+      columns={COLUMNS}
+      rows={entries}
+      /* changed_at alone is not unique — one UPDATE expands to a row per changed field, all
+       * sharing it. audit_id plus field_name is what makes a row identifiable. */
+      keyField={(e) => `${e.audit_id}-${e.field_name ?? ""}`}
+      emptyState={
+        <p className="rounded-lg border border-border bg-surface p-6 text-center text-body text-text-secondary">
+          ไม่พบรายการที่ตรงกับตัวกรอง
+        </p>
+      }
+    />
   );
 }
