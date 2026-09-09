@@ -97,5 +97,5 @@ begin
     p_key, p_effective_from;
 end $$;
 
-revoke execute on function public.fn_set_config(uuid, text, date, numeric, text, jsonb, uuid, text) from public;
+revoke execute on function public.fn_set_config(uuid, text, date, numeric, text, jsonb, uuid, text) from public, anon, authenticated;
 grant  execute on function public.fn_set_config(uuid, text, date, numeric, text, jsonb, uuid, text) to authenticated;

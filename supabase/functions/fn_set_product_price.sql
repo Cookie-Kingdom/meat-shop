@@ -65,5 +65,5 @@ begin
     p_product_id, p_effective_from;
 end $$;
 
-revoke execute on function public.fn_set_product_price(uuid, uuid, date, numeric, numeric) from public;
+revoke execute on function public.fn_set_product_price(uuid, uuid, date, numeric, numeric) from public, anon, authenticated;
 grant  execute on function public.fn_set_product_price(uuid, uuid, date, numeric, numeric) to authenticated;

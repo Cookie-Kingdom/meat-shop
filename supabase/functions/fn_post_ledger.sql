@@ -127,4 +127,4 @@ end $$;
 
 revoke execute on function public.fn_post_ledger(
   uuid, item_type, uuid, stock_state, movement_type, numeric, date, timestamptz,
-  uuid, uuid, uuid, uuid, text, uuid, text, uuid) from public;
+  uuid, uuid, uuid, uuid, text, uuid, text, uuid) from public, anon, authenticated;

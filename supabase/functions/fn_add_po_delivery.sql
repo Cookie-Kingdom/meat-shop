@@ -161,5 +161,5 @@ exception
     raise;
 end $$;
 
-revoke execute on function public.fn_add_po_delivery(uuid, uuid, date, numeric, uuid, text) from public;
+revoke execute on function public.fn_add_po_delivery(uuid, uuid, date, numeric, uuid, text) from public, anon, authenticated;
 grant  execute on function public.fn_add_po_delivery(uuid, uuid, date, numeric, uuid, text) to authenticated;

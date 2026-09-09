@@ -135,5 +135,5 @@ exception
     raise;
 end $$;
 
-revoke execute on function public.fn_create_po(uuid, uuid, date, numeric, numeric, numeric, numeric, text) from public;
+revoke execute on function public.fn_create_po(uuid, uuid, date, numeric, numeric, numeric, numeric, text) from public, anon, authenticated;
 grant  execute on function public.fn_create_po(uuid, uuid, date, numeric, numeric, numeric, numeric, text) to authenticated;

@@ -88,5 +88,5 @@ begin
   return v_id;
 end $$;
 
-revoke execute on function public.fn_set_packaging_full_stock(uuid, uuid, date, numeric, uuid) from public;
+revoke execute on function public.fn_set_packaging_full_stock(uuid, uuid, date, numeric, uuid) from public, anon, authenticated;
 grant  execute on function public.fn_set_packaging_full_stock(uuid, uuid, date, numeric, uuid) to authenticated;

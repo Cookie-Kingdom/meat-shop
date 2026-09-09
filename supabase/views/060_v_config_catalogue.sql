@@ -44,4 +44,5 @@ comment on view public.v_config_catalogue is
   'price, no quantity. Active rows only. L1 only via the WHERE (R34); the three tables stay '
   'deny-all (ADR-004).';
 
-grant select on public.v_config_catalogue to authenticated;
+revoke all    on public.v_config_catalogue from anon, authenticated;
+grant  select on public.v_config_catalogue to   authenticated;

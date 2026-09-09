@@ -45,4 +45,4 @@ begin
   return v_actor;
 end $$;
 
-revoke execute on function public.fn_require_owner() from public;
+revoke execute on function public.fn_require_owner() from public, anon, authenticated;

@@ -3,7 +3,7 @@
 # Card ^ref-63: the same order, against a target — local Docker or the live project.
 #
 #   bash supabase/tests/migrations_apply_test.sh                    # throwaway Docker: apply, then test
-#   bash supabase/tests/migrations_apply_test.sh --db-url "<url>"   # a real database: apply only
+#   bash supabase/tests/migrations_apply_test.sh --db-url "<url>"   # a real database: apply, then assert posture
 #
 # There is deliberately no second script. A `deploy.sh` beside this one is exactly how the
 # two apply orders drift apart, which is what TICKET-003 closed on. The order is stated once,
@@ -90,9 +90,21 @@ if [ -n "$DB_URL" ]; then
 
   apply_state_folders "${PSQL[@]}" || failures=$?
 
-  # supabase/tests/* is never pointed at a real database: the .sql tests write and roll back
-  # by raising, and the .sh tests start their own containers. Run them against Docker.
-  echo "SKIP  supabase/tests/* — not run against a remote database"
+  # ^ref-64: one exception to "supabase/tests/* is never pointed at a real database".
+  # rls_deny_all_test.sql is now posture only — read-only catalogue sweeps, no fixture, no
+  # write — and it is the one assertion that MUST run here. The defect it exists to catch
+  # is a grant that is real in Docker and inert live, so asserting it against Docker alone
+  # asserts the half that was never broken. Everything else still writes, and still runs
+  # against Docker only.
+  out=$("${PSQL[@]}" < supabase/tests/rls_deny_all_test.sql 2>&1)
+  if grep -q "RLS_DENY_ALL_TEST_PASSED" <<<"$out"; then
+    echo "PASS  rls_deny_all_test.sql (posture, against this database)"
+  else
+    echo "FAIL  rls_deny_all_test.sql (posture, against this database)"
+    echo "$out" | sed 's/^/      /' | head -8
+    failures=$((failures + 1))
+  fi
+  echo "SKIP  the rest of supabase/tests/* — they write, and are run against Docker"
 
   if [ "$failures" -eq 0 ]; then echo "applied"; else echo "$failures failing"; fi
   exit "$failures"
@@ -153,6 +165,17 @@ select line from (
   union all
   select 'grant ' || table_name || ' ' || grantee || ' ' || privilege_type
     from information_schema.role_table_grants where table_schema = 'public'
+  union all
+  -- ^ref-64: function EXECUTE, which role_table_grants does not cover. Without this row
+  -- the snapshot cannot see 000_revoke_defaults.sql revoking and the per-file grants
+  -- restoring, so "applying twice changes nothing" would not actually cover the one
+  -- ordering the sweep depends on.
+  select 'execute ' || p.proname || ' ' || r.rolname
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   cross join (select rolname from pg_roles where rolname in ('anon', 'authenticated')) r
+   where n.nspname = 'public' and p.prokind = 'f'
+     and has_function_privilege(r.rolname, p.oid, 'EXECUTE')
 ) t order by line;
 SQL
 }

@@ -160,5 +160,5 @@ begin
   return v_n;
 end $$;
 
-revoke execute on function public.fn_set_smoke_fee_tier(uuid, date, jsonb) from public;
+revoke execute on function public.fn_set_smoke_fee_tier(uuid, date, jsonb) from public, anon, authenticated;
 grant  execute on function public.fn_set_smoke_fee_tier(uuid, date, jsonb) to authenticated;

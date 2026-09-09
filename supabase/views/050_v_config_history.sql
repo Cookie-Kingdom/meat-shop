@@ -196,4 +196,5 @@ comment on view public.v_config_history is
   'current. A smoke-fee band set is ONE row (D02, R37). L1 only, enforced in the WHERE (R34) — '
   'the four tables stay deny-all.';
 
-grant select on public.v_config_history to authenticated;
+revoke all    on public.v_config_history from anon, authenticated;
+grant  select on public.v_config_history to   authenticated;

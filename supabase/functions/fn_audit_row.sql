@@ -113,3 +113,25 @@ begin
       'trg_audit_' || t, t);
   end loop;
 end $do$;
+
+-- Both functions here are trigger functions: they fire as the table owner regardless of
+-- EXECUTE, so a grant buys them nothing and no session should hold one.
+--
+-- They still need their own revoke, and this is the ^ref-64 finding that the plan did not
+-- have. `000_revoke_defaults.sql` sweeps the schema, but it runs FIRST in `functions/` and
+-- these two are created here, after it. Its `alter default privileges` cannot cover them
+-- either: ADP REVOKE removes an existing default-ACL entry — which is exactly what is
+-- needed against Supabase's named grant to anon/authenticated — but PostgreSQL's built-in
+-- `EXECUTE to PUBLIC` on a new function is not a default-ACL entry, so nothing can revoke
+-- it in advance. It can only be revoked per object, after the object exists.
+--
+-- Measured on postgres:17, ^ref-64: after `alter default privileges … revoke execute on
+-- functions from public, anon`, pg_default_acl holds ZERO rows and a freshly created
+-- function is still executable by anon. The row is dropped because the result equals the
+-- built-in default; the built-in default is the problem.
+--
+-- So: every function this project creates carries its own revoke line, including the ones
+-- granted to nobody. Sweep 1e of rls_deny_all_test.sql is what catches the next one that
+-- forgets — it went red on exactly these two.
+revoke execute on function public.fn_audit_row()             from public, anon, authenticated;
+revoke execute on function public.fn_audit_log_append_only() from public, anon, authenticated;
