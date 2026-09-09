@@ -67,6 +67,20 @@ if [ -n "$DB_URL" ]; then
   echo "target: remote database"
   echo "      migrations via \`supabase db push\`; functions/views/policies applied directly"
 
+  # Preflight, before `db push` moves anything. The CLI and this psql reach the database by
+  # two different routes, and the second one fails where the first does not: Supabase's
+  # direct `db.<ref>.supabase.co` host resolves IPv6-only, and Docker's default bridge has
+  # no IPv6, so every state file fails identically after the migrations have already landed.
+  # Half-applied is the one outcome worth spending a round trip to avoid.
+  if ! out=$("${PSQL[@]}" -c 'select 1' 2>&1); then
+    echo "FAIL  cannot reach the database from the postgres:17 container"
+    echo "$out" | sed 's/^/      /' | head -3
+    echo "      Nothing was applied. If that says \"Network is unreachable\" on an IPv6"
+    echo "      address, use the pooler connection string instead of the direct one —"
+    echo "      Dashboard > Project Settings > Database > Connection string > Session pooler."
+    exit 1
+  fi
+
   if ! supabase db push --db-url "$DB_URL"; then
     echo "FAIL  supabase db push"
     echo "      A diverged migration history is repaired by hand (\`supabase migration repair\`),"
