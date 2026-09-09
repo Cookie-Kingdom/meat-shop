@@ -1,4 +1,7 @@
--- Card ^ref-11 — the four config setters' shared front door.
+-- Card ^ref-11 — the shared front door for every L1-only write function.
+--
+-- Written for the four config setters; ^ref-19's fn_create_po and fn_add_po_delivery are
+-- the second caller, which is why the FORBIDDEN message no longer says "config".
 --
 -- Every fn_set_* on this card opens with the same two questions, and the order they are
 -- asked in is the behaviour, not a detail:
@@ -36,7 +39,7 @@ begin
   end if;
 
   if fn_current_role() <> 'L1_OWNER' then
-    raise exception 'FORBIDDEN: config is L1 only (ADR-004, ADR-018)';
+    raise exception 'FORBIDDEN: this write is L1 only (ADR-004)';
   end if;
 
   return v_actor;
