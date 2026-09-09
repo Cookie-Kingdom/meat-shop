@@ -51,7 +51,11 @@ begin
   -- R21: a meat sale line without a lot is refused.
   insert into products (code, name_th, item_type, sale_unit)
     values ('MEAT_BOX', 'ข้าวหมูรมควัน', 'SMOKED_MEAT', 'box') returning id into v_prod;
-  insert into daily_reports (location_id, report_date) values (v_loc, current_date)
+  -- shift_started_at is NOT NULL as of migration ...0009 (^ref-38, Finding 3): a report with
+  -- no shift open makes ADR-014 undecidable for that row. fn_open_daily_report always sets
+  -- now(); this fixture inserts directly, so it has to say so itself.
+  insert into daily_reports (location_id, report_date, shift_started_at)
+    values (v_loc, current_date, now())
     returning id into v_rep;
 
   v_ok := false;
