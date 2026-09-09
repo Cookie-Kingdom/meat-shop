@@ -33,9 +33,16 @@ create table auth.users (
   updated_at  timestamptz
 );
 
--- Stand-in for the Supabase helper. Real one resolves the JWT subject; nothing in the
--- current schema calls it, so a null-returning stub is honest rather than a guess.
-create function auth.uid() returns uuid language sql stable as $$ select null::uuid $$;
+-- Stand-in for the Supabase helper, in the shape the real one has: the JWT subject out of
+-- the `request.jwt.claims` GUC that PostgREST sets per request. It was a null-returning
+-- stub while nothing read it; `^ref-05`'s policies do, and a stub that always returns null
+-- makes every policy test vacuously pass. A test sets the caller with
+--   set local request.jwt.claims = '{"sub":"<uuid>"}';
+-- and resets it by setting the GUC to '' — outside a request there is no claim, which is
+-- exactly what an anon session sees.
+create function auth.uid() returns uuid language sql stable as $$
+  select (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid
+$$;
 
 -- The helper migration 0006 revokes execute on. It exists in the live project but in no
 -- migration, so a fresh apply has nothing to revoke from. Recreating it here lets the
