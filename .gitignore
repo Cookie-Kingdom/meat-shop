@@ -42,3 +42,6 @@ next-env.d.ts
 
 # ai tooling
 CLAUDE.md
+
+# Supabase CLI scratch state (project ref, versions, pooler host). Local, not schema.
+supabase/.temp/
