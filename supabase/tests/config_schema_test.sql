@@ -51,18 +51,28 @@ begin
     assert v_n >= 1, format('ADR-006: %s has no unique key including effective_from', t);
   end loop;
 
-  ------------------------------------------------------- no mutable rate column, anywhere
+  ------------------------------------------------- no mutable rate column on any BASE TABLE
   -- ADR-006's whole point. An effective_to closes off the previous row, which means an
   -- UPDATE on every change; a current_* column is a second place that can disagree about
   -- the current value. Either one silently rewrites a closed period (BR23).
-  select string_agg(format('%s.%s', table_name, column_name), ', '), count(*)
+  --
+  -- BASE TABLES ONLY, narrowed by ^ref-12. It read information_schema.columns unfiltered,
+  -- so it also swept views — and v_config_history's `is_current` is the exact opposite of
+  -- what this assert protects against: a flag COMPUTED per read from effective_from, in the
+  -- same order fn_config_value resolves in. It cannot go stale and it stores nothing. The
+  -- failure mode named above needs somewhere to write a wrong value to, which a view has
+  -- not got. Every stored column the original sweep covered is still covered.
+  select string_agg(format('%s.%s', c.table_name, c.column_name), ', '), count(*)
     into v_bad, v_n
-    from information_schema.columns
-   where table_schema = 'public'
-     and (column_name like 'effective_to%'
-       or column_name like 'current!_%' escape '!'
-       or column_name like '%!_current' escape '!'
-       or column_name like 'is!_current%' escape '!');
+    from information_schema.columns c
+    join information_schema.tables t
+      on t.table_schema = c.table_schema and t.table_name = c.table_name
+   where c.table_schema = 'public'
+     and t.table_type = 'BASE TABLE'
+     and (c.column_name like 'effective_to%'
+       or c.column_name like 'current!_%' escape '!'
+       or c.column_name like '%!_current' escape '!'
+       or c.column_name like 'is!_current%' escape '!');
   assert v_n = 0, format('ADR-006: %s mutable-rate column(s): %s', v_n, v_bad);
 
   ------------------------------------------------ the hole fn_set_packaging_full_stock guards
