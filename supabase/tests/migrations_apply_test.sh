@@ -19,17 +19,37 @@ cd "$(dirname "$0")/../.."
 
 DB_URL="${SUPABASE_DB_URL:-}"
 
+# Was a remote target ASKED FOR? Not the same question as "is DB_URL non-empty", and the
+# difference is a silent wrong-target run: `SUPABASE_DB_URL="$(cat missing-file)"` sets the
+# variable to the empty string, the script sees no target, and applies to a throwaway
+# container instead — printing a full green run against the one target that was never
+# broken. That is the exact shape of the defect ^ref-64 exists to close, so the script must
+# not be able to do it. `${VAR+x}` is set-ness, not emptiness; that is the whole trick.
+TARGET_REQUESTED=0
+[ -n "${SUPABASE_DB_URL+x}" ] && TARGET_REQUESTED=1
+
 usage() {
   sed -n '2,16p' "$0" | sed 's/^# \?//'
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --db-url) DB_URL="${2:-}"; shift 2 || true ;;
+    --db-url) DB_URL="${2:-}"; TARGET_REQUESTED=1; shift 2 || true ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown argument: $1"; echo; usage; exit 2 ;;
   esac
 done
+
+if [ "$TARGET_REQUESTED" -eq 1 ] && [ -z "$DB_URL" ]; then
+  echo "FAIL  a remote target was asked for and the URL came out empty"
+  echo "      Nothing was applied, and nothing was tested. Refusing to fall through to the"
+  echo "      throwaway container: that would print a full green run against the wrong"
+  echo "      database, which is the defect ^ref-64 exists to close."
+  echo "      Usual causes: the file behind \$(cat …) does not exist; \$env:VAR PowerShell"
+  echo "      syntax in a bash command; or the variable is not set on the same line, since"
+  echo "      shell state does not survive between commands."
+  exit 2
+fi
 
 failures=0
 
