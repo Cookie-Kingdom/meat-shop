@@ -4,7 +4,9 @@
 
 function required(name: string, value: string | undefined): string {
   if (!value) {
-    throw new Error(`Missing environment variable ${name}. Set it in .env.local.`);
+    throw new Error(
+      `Missing environment variable ${name}. Set it in .env.local.`,
+    );
   }
   return value;
 }

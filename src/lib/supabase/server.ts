@@ -22,8 +22,8 @@ export async function createClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // A Server Component cannot write cookies. Harmless here: the refreshed
-          // session is written back by middleware instead, which card ^ref-07 adds.
+          // A Server Component cannot write cookies. Harmless here: `src/proxy.ts`
+          // refreshes the session and writes it back on every request instead.
         }
       },
     },
