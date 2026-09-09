@@ -32,12 +32,17 @@ if ! $PSQL < supabase/tests/local_harness.sql >/dev/null 2>&1; then
   echo "FAIL  local_harness.sql"; exit 1
 fi
 
-# migrations -> functions -> policies, in that order and for that reason: a policy names a
-# helper, and a helper names a table. `migrations/` is numbered and applied once; the other
-# two folders are the current statement of the rule and are written idempotently
-# (`create or replace function`, `drop policy if exists` then `create policy`), so
-# re-applying them is a no-op rather than an error.
-for f in supabase/migrations/*.sql supabase/functions/*.sql supabase/policies/*.sql; do
+# migrations -> functions -> views -> policies, in that order and for that reason: a policy
+# names a view, a view names a helper, and a helper names a table. `migrations/` is numbered
+# and applied once; the other three folders are the current statement of the rule and are
+# written idempotently (`create or replace function|view`, `drop policy if exists` then
+# `create policy`), so re-applying them is a no-op rather than an error.
+#
+# `views/` is why a view cannot live in `migrations/`: v_stock_balance calls fn_current_role,
+# and the numbered migrations all apply before functions/ does. Its files carry a numeric
+# prefix because views form a dependency graph — v_smoke_group_available selects from
+# v_stock_balance, and plain alphabetical order would apply it first and fail.
+for f in supabase/migrations/*.sql supabase/functions/*.sql supabase/views/*.sql supabase/policies/*.sql; do
   [ -e "$f" ] || continue
   if out=$($PSQL < "$f" 2>&1); then
     echo "PASS  $(basename "$f")"
@@ -57,6 +62,21 @@ for f in supabase/tests/*_test.sql; do
   else
     echo "FAIL  $(basename "$f")"
     echo "$out" | sed 's/^/      /' | head -8
+    failures=$((failures + 1))
+  fi
+done
+
+# Sibling .sh tests. A test that needs two sessions cannot run inside this container's
+# single psql pipeline, so it starts its own throwaway Postgres — and would never be run
+# at all if this loop did not call it. Skip this file, or it recurses forever.
+for f in supabase/tests/*_test.sh; do
+  [ -e "$f" ] || continue
+  [ "$(basename "$f")" = "$(basename "$0")" ] && continue
+  if out=$(bash "$f" 2>&1); then
+    echo "$out" | tail -1
+  else
+    echo "FAIL  $(basename "$f")"
+    echo "$out" | sed 's/^/      /' | tail -8
     failures=$((failures + 1))
   fi
 done
