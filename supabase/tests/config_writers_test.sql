@@ -53,6 +53,12 @@ begin
   insert into packaging_items (code, name_th, unit)
        values ('BAG', 'ถุงสุญญากาศ', 'ใบ') returning id into v_item;
 
+  -- ^ref-61: migration …0024 seeds brine_pct_of_meat and rice_serving_weight_kg at
+  -- 2000-01-01. TC-11, TC-14, TC-15 and TC-16 count or select those keys' rows, so the seed
+  -- rows are taken out of this aborted transaction to restore the baseline the cases were
+  -- written against. No assert is changed.
+  delete from config_settings where is_seed;
+
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
 
   --------------------------------------------------------------------------------- TC-11

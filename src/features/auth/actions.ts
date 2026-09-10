@@ -3,7 +3,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { ROLE_HOME } from "@/lib/auth/session";
 import { str } from "@/lib/params";
+import { hasUnsetBlocking } from "@/lib/rpc/setup";
 import { createClient } from "@/lib/supabase/server";
 
 const MIN_PASSWORD_LENGTH = 8;
@@ -34,6 +36,18 @@ export async function signIn(form: FormData) {
     redirect(
       `/login?error=invalid_credentials&next=${encodeURIComponent(next)}`,
     );
+  }
+
+  /* ADR-023 (card ^ref-61): an Owner with any BLOCK item unset lands on /owner/setup AT
+   * LOGIN — here, once, and not in the (owner) layout, which would drag them back on every
+   * navigation and make "may skip it" untrue. Only when no deep link was asked for: a
+   * `?next=` from an expired session is honoured, and the banner still names what is unset.
+   * The client that just signed in asks, because its session is already in memory. */
+  if (next === "/" || next === ROLE_HOME.L1_OWNER) {
+    const { data: role } = await supabase.rpc("fn_current_role");
+    if (role === "L1_OWNER" && (await hasUnsetBlocking(supabase))) {
+      redirect("/owner/setup");
+    }
   }
 
   redirect(next);

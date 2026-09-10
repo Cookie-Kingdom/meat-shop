@@ -58,6 +58,13 @@ begin
   insert into packaging_items (code, name_th, unit) values ('BOX5', 'กล่อง', 'ใบ')
     returning id into v_pack;
 
+  -- ^ref-61: migration …0024 seeds unlock_max_days_back = 3 at 2000-01-01 (v0.2 BR 15).
+  -- TC-37 at the foot of this block asserts the key is UNSET and back-dating refuses with
+  -- CONFIG_NOT_SET rather than assuming 3, so the seed is taken out of this block's
+  -- transaction to restore that precondition. The assert is unchanged, and the seed does not
+  -- weaken it: a live project that deletes nothing still reads 3 because v0.2 says 3.
+  delete from config_settings where is_seed;
+
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   perform fn_set_config(gen_random_uuid(), 'opening_cutoff_date', date '2026-01-01',
                         p_value_text => '2026-10-01');

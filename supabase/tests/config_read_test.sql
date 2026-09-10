@@ -32,6 +32,12 @@ begin
   insert into locations (code, name_th, kind) values ('BRB', 'สาขาบี', 'BRANCH')
     returning id into v_br_b;
 
+  -- ^ref-61: migration …0024 seeds brine_pct_of_meat and rice_serving_weight_kg (among
+  -- others) at 2000-01-01. TC-04 below asserts that a key whose only rows are in the future
+  -- raises, so the seed rows are taken out of this aborted transaction to restore the
+  -- "no dated row" baseline every case here was written against. No assert is changed.
+  delete from config_settings where is_seed;
+
   --------------------------------------------------------------------------------- TC-11
   -- ^ref-64. Before any claim is set, the resolver refuses to answer at all. The revoke on
   -- these two functions was the whole enforcement until this card, and a revoke turned out

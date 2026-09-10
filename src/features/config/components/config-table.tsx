@@ -100,7 +100,9 @@ const COLUMNS: Column<Item>[] = [
     header: "ผู้ตั้งค่า",
     cell: ({ current }) => (
       <span className="text-text-secondary">
-        {current.created_by_name ?? "—"}
+        {/* ^ref-61: only a v0.2 seed row has no author (…0024's biconditional). */}
+        {current.created_by_name ??
+          (current.created_by === null ? "ค่าตั้งต้นตามข้อกำหนด" : "—")}
       </span>
     ),
   },

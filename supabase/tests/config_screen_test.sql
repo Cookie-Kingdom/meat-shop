@@ -61,6 +61,11 @@ begin
   insert into locations (code, name_th, kind) values ('BR-TEST', 'สาขาทดสอบ', 'BRANCH')
     returning id into v_branch;
 
+  -- ^ref-61: migration …0024 seeds material_alert_ratio (among others) at 2000-01-01, and
+  -- TC-40 counts that key's rows in the view. The seed rows are taken out of this aborted
+  -- transaction to restore the baseline the cases were written against. No assert changes.
+  delete from config_settings where is_seed;
+
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
 
   -- Two global rows for one key, and a branch row that is OLDER than the newer global one.
