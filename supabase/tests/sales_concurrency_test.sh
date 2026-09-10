@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
-# TC-53 from TDD-sales.md: two sessions sell the last kilogram. Only two sessions can show this
-# race, because it lives between two transactions.
+# TC-53 and TC-54 from TDD-sales.md: the two F10 races. Only two sessions can show them,
+# because each lives between two transactions.
+#
+# TC-54 (^ref-45): two sessions close one day under two different keys. fn_close_daily_report
+# locks the report row (for update) before it reads any gate. The loser waits on that lock,
+# then reads the winner's CLOSED row and raises REPORT_ALREADY_CLOSED. The day ends with one
+# closed_at and one UPDATE audit row. Without the lock, both read OPEN, both write, and the
+# audit trail shows the day closed twice by two people.
+#
+# TC-53 (^ref-43), below, is the sale race.
 #
 #   bash supabase/tests/sales_concurrency_test.sh
 #
@@ -72,6 +80,16 @@ select fn_post_ledger(gen_random_uuid(), 'SMOKED_MEAT', (select id from location
                       'READY', 'THAW_IN', 1.00, current_date - 1,
                       p_lot_id => (select id from lots where lot_code = 'LOT-53'),
                       p_smoke_date_group_id => (select id from smoke_date_groups));
+-- TC-54: a second branch whose day holds no stock, no rice model and no materials, so every
+-- gate passes and only the race is under test. Its day is yesterday, and the day opens for
+-- closing at 21:00 Bangkok on that date, which is already past.
+insert into locations (code, name_th, kind) values ('BRB54', 'สาขาทดสอบปิดวัน', 'BRANCH');
+insert into user_locations (profile_id, location_id)
+     values ('$ADMIN', (select id from locations where code = 'BRB54'));
+insert into daily_reports (location_id, report_date, shift_started_at, opened_by)
+     values ((select id from locations where code = 'BRB54'), current_date - 1, now(), '$ADMIN');
+select fn_set_config(gen_random_uuid(), 'business_day_close_earliest', current_date - 30,
+                     p_value_text => '21:00');
 SQL
 
 # One sale of 5 boxes (1.00 kg) off the tuple. $1 is how long to hold the transaction open
@@ -119,8 +137,45 @@ fi
 [ "$lines" = "1" ]       || note "TC-53: $lines sales line(s) committed, expected 1"
 [ "$sales" = "1" ]       || note "TC-53: $sales SALE ledger row(s), expected 1"
 
+# ---------------------------------------------------------------------------------- TC-54
+# One close of branch BRB54's day. $1 is how long to hold the transaction open afterwards.
+# Each call mints its own key: two devices pressing the button, nothing shared.
+close_day() {
+  cat <<SQL
+begin;
+select set_config('request.jwt.claims', '{"sub":"$ADMIN"}', true);
+select fn_close_daily_report(
+  gen_random_uuid(),
+  (select r.id from daily_reports r join locations l on l.id = r.location_id where l.code = 'BRB54'));
+select pg_sleep($1);
+commit;
+SQL
+}
+
+close_day 2 | $PSQL > "$TMP/c.log" 2>&1 &
+pid_c=$!
+sleep 0.5
+close_day 0 | $PSQL > "$TMP/d.log" 2>&1 &
+pid_d=$!
+wait $pid_c; rc_c=$?
+wait $pid_d; rc_d=$?
+
+report="(select r.id from daily_reports r join locations l on l.id = r.location_id where l.code = 'BRB54')"
+status=$(Q "select status::text from daily_reports where id = $report")
+closes=$(Q "select count(*)::text from audit_log where table_name = 'daily_reports' and action = 'UPDATE' and row_id = $report")
+
+if { [ "$rc_c" -eq 0 ] && [ "$rc_d" -eq 0 ]; } || { [ "$rc_c" -ne 0 ] && [ "$rc_d" -ne 0 ]; }; then
+  note "TC-54: expected exactly one close to land (C rc=$rc_c, D rc=$rc_d)"
+  sed 's/^/      /' "$TMP/c.log" "$TMP/d.log" | tail -10
+fi
+if ! grep -qs REPORT_ALREADY_CLOSED "$TMP/c.log" "$TMP/d.log"; then
+  note "TC-54: neither session reported REPORT_ALREADY_CLOSED; the loser failed for another reason"
+fi
+[ "$status" = "CLOSED" ] || note "TC-54: the day reads $status, expected CLOSED"
+[ "$closes" = "1" ]      || note "TC-54: $closes UPDATE audit row(s) on the day, expected exactly 1 (R32)"
+
 if [ "$failures" -eq 0 ]; then
-  echo "PASS  sales_concurrency_test.sh  (one of two concurrent sales of the last 1.00 kg landed)"
+  echo "PASS  sales_concurrency_test.sh  (one of two concurrent sales of the last 1.00 kg landed; one of two concurrent closes)"
 else
   echo "$failures failing"
 fi
