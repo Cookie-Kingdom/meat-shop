@@ -23,6 +23,9 @@ export default function OwnerHome() {
       <Link href="/owner/setup" className="text-label text-accent hover:underline">
         ตั้งค่าเริ่มต้น → <UnsetMarker />
       </Link>
+      <Link href="/owner/expenses" className="text-label text-accent hover:underline">
+        OW 09 · ค่าใช้จ่ายและเงินลงทุน →
+      </Link>
       <Link
         href="/owner/audit"
         className="text-label text-accent hover:underline"
