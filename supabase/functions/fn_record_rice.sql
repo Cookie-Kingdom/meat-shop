@@ -34,12 +34,13 @@
 -- not edit (PLAN Finding 3). If the Owner overrules that, the preamble is the one line to change.
 --
 -- NO CLOSED CHECK HERE. Lane C's fn_guard_report_closed (...0018) raises REPORT_CLOSED on every
--- rice_records write, and it admits an UNLOCKED report under an approved unlock. A `status =
+-- rice_records write, and admits a CLOSED report under an approved, unexpired unlock. A `status =
 -- 'CLOSED'` test in this body would refuse writes that the trigger admits. R28's back-dating
 -- window IS checked, against the report's date and never current_date (ADR-014). It runs after
 -- the replay, so a retry of a committed write is never refused because the window closed
--- between the two calls (Finding 12). An UNLOCKED report skips the window: the approved unlock
--- is the escalation for an old day (Finding 4 amended, v0.2:401).
+-- between the two calls (Finding 12). It applies to an OPEN report only: a CLOSED day under an
+-- approved, unexpired unlock is lane C's trigger to admit (Finding 4 amended; lane H
+-- PLAN-unlock.md Finding 1).
 --
 -- NO PRICE AND NO LEDGER ROW. cooked_price_thb_per_kg and raw_price_thb_per_kg are L1-only and
 -- no rice cost key exists, so an L2 writer does not write them. Rice posts nothing to
@@ -87,11 +88,13 @@ begin
 
   if v_id is null then
     ------------------------------------------------------------------ 2. the window (R28)
-    -- An UNLOCKED day skips it: the approved unlock IS the escalation for an old day (v0.2:401
-    -- D07; the coordinator's rule, shared with lanes B and C). Nested, so fn_backdating_allowed
-    -- is not even asked about an unlocked day. This is not a CLOSED check; lane C's trigger
-    -- owns that.
-    if v_report.status is distinct from 'UNLOCKED' then
+    -- OPEN days only. An approved unlock leaves the day CLOSED and writes an APPROVED, unexpired
+    -- DAILY_REPORT unlock_requests row (lane H, PLAN-unlock.md Finding 1). Lane C's trigger alone
+    -- decides a CLOSED day: it admits the write under a live unlock, whatever the day's age, and
+    -- refuses it with REPORT_CLOSED once expires_at has passed (R42). So the window is the
+    -- ordinary path's rule and never the escalation's (v0.2:401 D07). Nested, so
+    -- fn_backdating_allowed is not even asked about a non-OPEN day.
+    if v_report.status = 'OPEN' then
       if not fn_backdating_allowed(v_report.report_date) then
         raise exception 'BACKDATE_NOT_ALLOWED: % is outside the back-dating window — a change that old goes through the unlock path (R28)',
           v_report.report_date;
