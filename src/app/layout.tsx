@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
+import { isDemoMode } from "@/features/demo/personas";
 
 const notoSansThai = Noto_Sans_Thai({
   variable: "--font-noto-sans-thai",
@@ -13,6 +14,8 @@ export const metadata: Metadata = {
   title: "NerdNuea Stock — ระบบสต๊อกและต้นทุนเนื้อรมควัน",
   description:
     "ระบบบันทึกสต๊อกและต้นทุน ตั้งแต่รับเนื้อจาก Foodiva ผ่านโรงรมเชียงใหม่ เข้าสต๊อกกลาง กระจายสู่สาขา จนถึงการขาย",
+  // ^ref-65 D5: the demo URL is public; keep it out of search results.
+  ...(isDemoMode() && { robots: { index: false, follow: false } }),
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

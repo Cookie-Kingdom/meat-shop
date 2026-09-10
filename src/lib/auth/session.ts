@@ -10,6 +10,7 @@ export type Viewer = {
   /** null when the profile is deactivated or has no row — `fn_current_role()` folds
    * `is_active` in, so there is no second place to forget the check (TC-07). */
   role: UserRole | null;
+  email: string | null;
 };
 
 /** Where each role lands. One place decides, so `/` and every post-login redirect agree. */
@@ -36,7 +37,11 @@ export const getViewer = cache(async (): Promise<Viewer | null> => {
 
   const { data } = await supabase.rpc("fn_current_role");
 
-  return { userId: user.id, role: (data as UserRole | null) ?? null };
+  return {
+    userId: user.id,
+    role: (data as UserRole | null) ?? null,
+    email: user.email ?? null,
+  };
 });
 
 /** Gate a route group. Signed out → `/login`; wrong or missing role → 403.

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { signIn } from "@/features/auth/actions";
 import { AUTH_ERRORS, type AuthErrorCode } from "@/features/auth/messages";
 import { Field } from "@/features/auth/field";
+import { PersonaPicker } from "@/features/demo/components/persona-picker";
+import { isDemoMode } from "@/features/demo/personas";
 
 type Search = { error?: string; next?: string };
 
@@ -13,6 +15,8 @@ export default async function LoginPage({
   searchParams: Promise<Search>;
 }) {
   const { error, next = "/" } = await searchParams;
+  if (isDemoMode()) return <PersonaPicker failed={error === "demo_unavailable"} />;
+
   const message = AUTH_ERRORS[error as AuthErrorCode] ?? null;
 
   return (
