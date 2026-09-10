@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import { RoleShell } from "@/components/shared/role-shell";
+import { actionLink } from "@/components/ui/controls";
 import { requireRole } from "@/lib/auth/session";
 
 /* (cm) — CM 01–05, L3_CM_OPERATOR only.
@@ -12,5 +15,14 @@ export default async function CmLayout({
   children: React.ReactNode;
 }) {
   await requireRole("L3_CM_OPERATOR");
-  return <RoleShell title="โรงรมเชียงใหม่">{children}</RoleShell>;
+  return (
+    <RoleShell title="โรงรมเชียงใหม่">
+      <nav aria-label="เมนูโรงรม">
+        <Link href="/cm" className={actionLink}>
+          งานของฉัน
+        </Link>
+      </nav>
+      {children}
+    </RoleShell>
+  );
 }
