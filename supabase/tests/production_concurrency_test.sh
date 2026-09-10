@@ -46,14 +46,9 @@ trap cleanup EXIT
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 docker run -d --name "$CONTAINER" -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=meatshop \
   postgres:17 >/dev/null || { echo "FAIL  could not start postgres:17"; exit 1; }
-# A real query on our own database, not pg_isready — see transport_concurrency_test.sh.
-ready=
-for _ in $(seq 1 60); do
-  docker exec "$CONTAINER" psql -U postgres -d meatshop -Atqc 'select 1' >/dev/null 2>&1 \
-    && { ready=1; break; }
-  sleep 1
-done
-[ -n "$ready" ] || { echo "FAIL  postgres:17 never answered a query within 60s"; exit 1; }
+# Wait for the FINAL server over TCP, not the init server on the socket (^fix-startup-race).
+. supabase/tests/wait_for_postgres.sh
+wait_for_postgres "$CONTAINER" || exit 1
 
 $PSQL < supabase/tests/local_harness.sql >/dev/null 2>&1 || { echo "FAIL  local_harness.sql"; exit 1; }
 for f in supabase/migrations/*.sql supabase/functions/*.sql supabase/views/*.sql supabase/policies/*.sql; do
