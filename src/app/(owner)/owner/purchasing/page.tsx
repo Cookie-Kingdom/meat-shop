@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { actionButton } from "@/components/ui/controls";
+import { actionButton, actionLink } from "@/components/ui/controls";
 import { configAt } from "@/features/config/resolve";
 import { NewPoSheet } from "@/features/purchasing/components/new-po-sheet";
 import { PoList } from "@/features/purchasing/components/po-list";
@@ -81,9 +81,14 @@ export default async function PurchasingPage(
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-h1 text-text-primary">สั่งซื้อเนื้อ (PO)</h1>
-        <Link href="/owner/purchasing?new=1" className={actionButton}>
-          สร้าง PO ใหม่
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/owner/transport?new=1" className={actionLink}>
+            ส่งรถขาไป (OW 02) →
+          </Link>
+          <Link href="/owner/purchasing?new=1" className={actionButton}>
+            สร้าง PO ใหม่
+          </Link>
+        </div>
       </div>
 
       <p className="text-body-sm text-text-secondary">

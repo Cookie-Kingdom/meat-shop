@@ -30,6 +30,12 @@ export default function OwnerHome() {
       >
         OW 01 · สั่งซื้อเนื้อ (PO) →
       </Link>
+      <Link
+        href="/owner/transport"
+        className="text-label text-accent hover:underline"
+      >
+        OW 02 · ขนส่ง →
+      </Link>
     </div>
   );
 }
