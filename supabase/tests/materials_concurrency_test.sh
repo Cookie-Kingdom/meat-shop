@@ -43,20 +43,9 @@ trap cleanup EXIT
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 docker run -d --name "$CONTAINER" -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=meatshop \
   postgres:17 >/dev/null || { echo "FAIL  could not start postgres:17"; exit 1; }
-# A REAL QUERY, NOT pg_isready, AND `-d meatshop`, NOT THE DEFAULT `postgres` DB.
-# The postgres image runs initdb, brings up a TEMPORARY server on a unix socket to run its
-# init scripts, and only then restarts the real one. pg_isready answers `yes` against that
-# temporary server, so a fast machine gets through this loop and has its connection dropped
-# by the restart a moment later — which surfaces as `FAIL local_harness.sql` with no error
-# anyone can see. The image also accepts connections on `postgres` a moment before initdb
-# has created ours. `select 1` on our own database, over the same path psql will use, is
-# the condition that actually matters.
-ready=
-for _ in $(seq 1 60); do
-  docker exec "$CONTAINER" psql -U postgres -d meatshop -Atqc 'select 1' >/dev/null 2>&1     && { ready=1; break; }
-  sleep 1
-done
-[ -n "$ready" ] || { echo "FAIL  postgres:17 never answered a query within 60s"; exit 1; }
+# Wait for the FINAL server over TCP, not the init server on the socket (^fix-startup-race).
+. supabase/tests/wait_for_postgres.sh
+wait_for_postgres "$CONTAINER" || exit 1
 
 $PSQL < supabase/tests/local_harness.sql >/dev/null 2>&1 || { echo "FAIL  local_harness.sql"; exit 1; }
 for f in supabase/migrations/*.sql supabase/functions/*.sql supabase/views/*.sql supabase/policies/*.sql; do
