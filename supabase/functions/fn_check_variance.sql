@@ -26,11 +26,27 @@
 -- dated config lookup and no call site changes.
 --
 -- OUT parameters rather than a composite type: a new type would need a migration, and this
--- slice needs none. Changing an OUT list is not a `create or replace`, hence the drop.
+-- slice needs none.
+--
+-- THIS FILE USED TO OPEN WITH `drop function if exists`, AND IT CANNOT ANY MORE (^ref-22).
+-- The drop was here because changing an OUT list is not a `create or replace`, and the OUT
+-- list changed once, at ^ref-17. It has been stable since, and from ^ref-23 a VIEW depends
+-- on this function: v_transport_variance takes ADR-019's percentage rather than reading
+-- transport_lines.variance_pct, which rounds differently. A view is a hard catalogue
+-- dependency, so the drop started failing on the SECOND apply —
+--
+--   ERROR: cannot drop function fn_check_variance(...) because other objects depend on it
+--
+-- — and because `apply_state_folders` runs `000_revoke_defaults.sql` first and this file
+-- aborted before reaching its own `grant`, the function was left executable by nobody and
+-- every RPC that calls it stopped working. That is ^ref-63's "applying twice changes
+-- nothing" check going red, and it caught this.
+--
+-- If a future card genuinely has to change the OUT list, it drops the dependent views in
+-- the same change and lets `views/` recreate them — deliberately, not by adding CASCADE
+-- here, which would silently drop a view whenever somebody applied `functions/` alone.
 
-drop function if exists public.fn_check_variance(numeric, numeric, text, numeric);
-
-create function public.fn_check_variance(
+create or replace function public.fn_check_variance(
   p_actual        numeric,
   p_expected      numeric,
   p_mode          text,

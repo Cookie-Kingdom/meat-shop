@@ -111,23 +111,26 @@ begin
      and has_function_privilege('anon', p.oid, 'EXECUTE');
   assert v_n = 0, format('ADR-004: anon may execute %s function(s): %s', v_n, v_bad);
 
-  -- 1f. The five that are granted to NOBODY, by name. (^ref-64)
+  -- 1f. The six that are granted to NOBODY, by name. (^ref-64)
   --
-  --     A list, not a pattern. The point is that these five are different from the rest,
+  --     A list, not a pattern. The point is that these six are different from the rest,
   --     and a pattern that happened to match them today would stop matching the day a
-  --     sixth arrives - which is how the card's own acceptance line came to name three.
+  --     seventh arrives - which is how the card's own acceptance line came to name three.
+  --     ^ref-22 is the sixth arriving: fn_config_boolean, which F5 needed because
+  --     partial_receipt_allowed and receipt_variance_requires_reason are boolean keys and
+  --     config_settings has no boolean column for them to live in.
   --
-  --     fn_config_value and fn_config_numeric are primitives for definer functions and
-  --     resolve prices (R20, R31). fn_post_ledger is the ledger write primitive (ADR-003).
-  --     fn_require_owner and fn_require_branch are definer preambles. All five are called
-  --     from inside a SECURITY DEFINER function and by nothing else, ever.
+  --     fn_config_value, fn_config_numeric and fn_config_boolean are primitives for definer
+  --     functions and resolve prices (R20, R31). fn_post_ledger is the ledger write
+  --     primitive (ADR-003). fn_require_owner and fn_require_branch are definer preambles.
+  --     All six are called from inside a SECURITY DEFINER function and by nothing else, ever.
   select string_agg(p.proname, ', ' order by p.proname), count(*)
     into v_bad, v_n
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public'
-     and p.proname in ('fn_config_value', 'fn_config_numeric', 'fn_post_ledger',
-                       'fn_require_owner', 'fn_require_branch')
+     and p.proname in ('fn_config_value', 'fn_config_numeric', 'fn_config_boolean',
+                       'fn_post_ledger', 'fn_require_owner', 'fn_require_branch')
      and (has_function_privilege('anon',          p.oid, 'EXECUTE')
        or has_function_privilege('authenticated', p.oid, 'EXECUTE'));
   assert v_n = 0,
@@ -149,8 +152,8 @@ begin
    where n.nspname = 'public'
      and p.prokind = 'f'
      and p.proname like 'fn\_%'
-     and p.proname not in ('fn_config_value', 'fn_config_numeric', 'fn_post_ledger',
-                           'fn_require_owner', 'fn_require_branch',
+     and p.proname not in ('fn_config_value', 'fn_config_numeric', 'fn_config_boolean',
+                           'fn_post_ledger', 'fn_require_owner', 'fn_require_branch',
                            'fn_audit_row', 'fn_audit_log_append_only',
                            'fn_rollup_smoke_log_input', 'fn_require_lot_for_meat',
                            'fn_stock_ledger_append_only')
