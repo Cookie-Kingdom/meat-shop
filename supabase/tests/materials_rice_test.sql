@@ -319,10 +319,10 @@ begin
     format('TC-28: a closed day took a rice write, got [%s]', coalesce(v_err, 'no error at all'));
 
   --------------------------------------------------------------------------------- TC-29
-  -- R28's window, once the opening window is shut. A day ten back, UNLOCKED so lane C's guard
-  -- admits it and the window is the only thing left to refuse it.
-  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by)
-       values (v_bra, current_date - 10, now() - interval '10 days', 'UNLOCKED', v_adm_a)
+  -- R28's window, once the opening window is shut. A day ten back and OPEN: today's report at A
+  -- was closed in TC-28, so daily_reports_one_open has room, and lane C's guard admits OPEN.
+  insert into daily_reports (location_id, report_date, shift_started_at, opened_by)
+       values (v_bra, current_date - 10, now() - interval '10 days', v_adm_a)
     returning id into v_rep_old;
   insert into opening_balance_close (closed_by, closed_idempotency_key) values (v_owner, gen_random_uuid());
   insert into config_settings (key, value_numeric, effective_from, created_by)
@@ -335,6 +335,19 @@ begin
   end;
   assert v_err like 'BACKDATE_NOT_ALLOWED%',
     format('TC-29: a day ten back took a rice write with a 3-day window, got [%s]', coalesce(v_err, 'no error at all'));
+
+  -- The same day, UNLOCKED. The approved unlock is the escalation for an old day, so the window
+  -- no longer applies (v0.2:401 D07; the coordinator's rule, shared with lanes B and C).
+  update daily_reports set status = 'UNLOCKED' where id = v_rep_old;
+  v_err := null;
+  begin
+    perform fn_record_rice(gen_random_uuid(), v_rep_old, p_cooked_remaining_kg => 1.00);
+  exception when others then v_err := sqlerrm;
+  end;
+  assert v_err is null,
+    format('TC-29: an UNLOCKED day ten back refused a rice write — the unlock is the escalation, got [%s]', v_err);
+  select count(*) into v_n from rice_records where daily_report_id = v_rep_old and cooked_remaining_kg = 1.00;
+  assert v_n = 1, 'TC-29: the unlocked day''s rice write did not land';
 
   --------------------------------------------------------------------------------- TC-30
   assert has_function_privilege('authenticated',

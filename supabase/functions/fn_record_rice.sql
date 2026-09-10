@@ -38,7 +38,8 @@
 -- 'CLOSED'` test in this body would refuse writes that the trigger admits. R28's back-dating
 -- window IS checked, against the report's date and never current_date (ADR-014). It runs after
 -- the replay, so a retry of a committed write is never refused because the window closed
--- between the two calls (Finding 12).
+-- between the two calls (Finding 12). An UNLOCKED report skips the window: the approved unlock
+-- is the escalation for an old day (Finding 4 amended, v0.2:401).
 --
 -- NO PRICE AND NO LEDGER ROW. cooked_price_thb_per_kg and raw_price_thb_per_kg are L1-only and
 -- no rice cost key exists, so an L2 writer does not write them. Rice posts nothing to
@@ -86,9 +87,15 @@ begin
 
   if v_id is null then
     ------------------------------------------------------------------ 2. the window (R28)
-    if not fn_backdating_allowed(v_report.report_date) then
-      raise exception 'BACKDATE_NOT_ALLOWED: % is outside the back-dating window — a change that old goes through the unlock path (R28)',
-        v_report.report_date;
+    -- An UNLOCKED day skips it: the approved unlock IS the escalation for an old day (v0.2:401
+    -- D07; the coordinator's rule, shared with lanes B and C). Nested, so fn_backdating_allowed
+    -- is not even asked about an unlocked day. This is not a CLOSED check; lane C's trigger
+    -- owns that.
+    if v_report.status is distinct from 'UNLOCKED' then
+      if not fn_backdating_allowed(v_report.report_date) then
+        raise exception 'BACKDATE_NOT_ALLOWED: % is outside the back-dating window — a change that old goes through the unlock path (R28)',
+          v_report.report_date;
+      end if;
     end if;
 
     ----------------------------------------------------------------------- 3. the model
