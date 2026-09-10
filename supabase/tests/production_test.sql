@@ -1,9 +1,10 @@
--- Card ^ref-26 — fn_require_operator, fn_record_lot_receipt and v_lot_pending_work.
+-- Cards ^ref-26 and ^ref-27 — fn_require_operator, fn_record_lot_receipt, v_lot_pending_work,
+-- fn_upsert_smoke_daily_log and v_lot_progress.
 --
--- Covers TC-09 ... TC-18, TC-30 ... TC-32 and TC-34 ... TC-36 from TDD-lots.md, and red→green
--- slices 3, 4, 5 and 8. TC-19 ... TC-29 (the daily log and the bags) belong to ^ref-27 and
--- ^ref-28 and are not in this file yet; the file is named for the range so those cards append
--- to it rather than starting a fourth production test.
+-- Covers TC-09 ... TC-24 and TC-30 ... TC-36 from TDD-lots.md, and red→green slices 3, 4, 5,
+-- 6, 7, 8 and 9. TC-25 ... TC-29 (the bags and their concurrency) belong to ^ref-28 and are
+-- not in this file yet; the file is named for the range so that card appends to it rather
+-- than starting a fourth production test.
 --
 -- ONE do $$ BLOCK, and it has to stay one. migrations_apply_test.sh pipes each file into psql
 -- WITHOUT --single-transaction, so every top-level statement is its own transaction: a second
@@ -11,11 +12,12 @@
 -- alphabetically after this one would inherit four lots and a chef house it never created.
 -- The closing raise is what rolls this file back, and it can only roll back the block it is in.
 --
--- THE SOURCE ROWS FOR TC-30 ... TC-32 ARE INSERTED DIRECTLY, not through
--- fn_upsert_smoke_daily_log, which does not exist until ^ref-27. Deliberate, not a shortcut:
--- the view under test reads smoke_daily_log_sources, so the fixture it needs is source rows,
--- and routing them through an RPC nobody has written yet would make this card's test fail for
--- the next card's reason. TC-21 asserts the same cross-lot day through the RPC once it exists.
+-- THE SOURCE ROWS FOR TC-30 ... TC-32 STAY INSERTED DIRECTLY, and are not rewritten onto
+-- fn_upsert_smoke_daily_log now that it exists. The view under test reads
+-- smoke_daily_log_sources, so the fixture it needs is source rows; routing them through the
+-- RPC would make a view test fail for a function's reason and would hide the -3.50 in TC-31
+-- behind a lot-state guard that has nothing to do with the join being asserted. TC-21 is the
+-- same cross-lot day through the RPC, on lots V and U, and that is where the two meet.
 --
 -- Everything runs in a transaction that aborts on purpose, so nothing persists.
 -- Run:  psql "$DATABASE_URL" -f supabase/tests/production_test.sql
@@ -48,6 +50,9 @@ declare
   v_rec     uuid;
   v_rec2    uuid;
   v_logA    uuid;
+  v_logV    uuid;
+  v_logX    uuid;
+  v_key     uuid;
 begin
   ------------------------------------------------------------------------------- fixtures
   insert into auth.users (id) values (v_owner), (v_l2), (v_l3), (v_l3b), (v_l3c), (v_gone);
@@ -277,6 +282,167 @@ begin
   assert v_txt = 'น้ำแข็งละลายระหว่างขนส่ง',
     format('TC-18: the CM 03 visit erased the reason (%s)', coalesce(v_txt, 'null'));
 
+  --------------------------------------------------------------------------------- TC-19
+  -- CM 04's morning visit, on lot V — 40 kg out of its own meat and 4 kg of brine. The
+  -- roll-up is the whole assertion: input_weight_kg is never a parameter, so a 40 that
+  -- arrives on the log arrived through trg_rollup_smoke_log_input (R6a).
+  v_logV := fn_upsert_smoke_daily_log(
+              gen_random_uuid(), v_lotV, v_day,
+              jsonb_build_array(jsonb_build_object('lot_id', v_lotV, 'input_weight_kg', 40.00)),
+              p_brine_used_kg => 4.00);
+
+  select count(*) into v_n from smoke_daily_logs where lot_id = v_lotV;
+  assert v_n = 1, format('TC-19: %s log rows for one lot-day', v_n);
+
+  select input_weight_kg into v_kg from smoke_daily_logs where id = v_logV;
+  assert v_kg = 40.00,
+    format('TC-19: input_weight_kg is %s, not 40.00 — the R6a trigger did not fire', v_kg);
+
+  select brine_used_kg into v_kg from smoke_daily_logs where id = v_logV;
+  assert v_kg = 4.00, format('TC-19: brine_used_kg stored as %s', coalesce(v_kg::text, 'null'));
+
+  select state::text into v_txt from lots where id = v_lotV;
+  assert v_txt = 'SMOKING', format('TC-19: lot_state is %s, not SMOKING after the first log', v_txt);
+
+  -- Finding 7: the log's two packed columns are a third copy of the group's roll-up and are
+  -- never written by anything. TC-08's half that needs a real write to assert.
+  select count(*) into v_n from smoke_daily_logs
+   where id = v_logV and (packed_weight_kg is not null or bag_count is not null);
+  assert v_n = 0, 'TC-19/TC-08: fn_upsert_smoke_daily_log wrote the log''s packed columns';
+
+  -- And the progress view reads the day, not the pack lines that do not exist yet.
+  select days_logged into v_n from v_lot_progress where lot_id = v_lotV;
+  assert v_n = 1, format('TC-19: v_lot_progress reads %s day(s) logged, not 1', v_n);
+  select packed_weight_kg into v_kg from v_lot_progress where lot_id = v_lotV;
+  assert v_kg = 0, format('TC-19: v_lot_progress reads %s kg packed before any bag exists', v_kg);
+
+  --------------------------------------------------------------------------------- TC-20
+  -- R6a and R18: a log with no sources cannot be saved. Empty array and null are the same
+  -- refusal, because a client that omits the field and one that sends [] are the same bug.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_upsert_smoke_daily_log(gen_random_uuid(), v_lotV, v_day + 5, '[]'::jsonb);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'INPUT_SOURCES_REQUIRED:%';
+  end;
+  assert v_ok, format('TC-20: an empty p_sources got %s', coalesce(v_err, 'no exception at all'));
+
+  v_ok := false; v_err := null;
+  begin
+    perform fn_upsert_smoke_daily_log(gen_random_uuid(), v_lotV, v_day + 5, null);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'INPUT_SOURCES_REQUIRED:%';
+  end;
+  assert v_ok, format('TC-20: a null p_sources got %s', coalesce(v_err, 'no exception at all'));
+
+  select count(*) into v_n from smoke_daily_logs where lot_id = v_lotV and event_date = v_day + 5;
+  assert v_n = 0, format('TC-20: %s log row(s) written by the refused calls', v_n);
+
+  --------------------------------------------------------------------------------- TC-21
+  -- The cross-lot day through the RPC (D05, Seam 2). One log FILED under lot V, drawing 30 kg
+  -- out of V and 10 kg out of lot U. Two source rows, one log, and the roll-up is 40.
+  v_logX := fn_upsert_smoke_daily_log(
+              gen_random_uuid(), v_lotV, v_day + 1,
+              jsonb_build_array(
+                jsonb_build_object('lot_id', v_lotV, 'input_weight_kg', 30.00),
+                jsonb_build_object('lot_id', v_lotU, 'input_weight_kg', 10.00)));
+
+  select count(*) into v_n from smoke_daily_log_sources where smoke_daily_log_id = v_logX;
+  assert v_n = 2, format('TC-21: %s source rows for a two-lot day', v_n);
+
+  select input_weight_kg into v_kg from smoke_daily_logs where id = v_logX;
+  assert v_kg = 40.00, format('TC-21: the roll-up over two source lots reads %s, not 40.00', v_kg);
+
+  -- And the two lots are charged separately, which is the D05 join the views ride on.
+  select input_consumed_kg into v_kg from v_lot_progress where lot_id = v_lotV;
+  assert v_kg = 70.00,
+    format('TC-21: lot V has consumed %s kg, not 70.00 — 40 on day one and its own 30 on day two', v_kg);
+
+  --------------------------------------------------------------------------------- TC-22
+  -- R6a holds against a partial write, and the correction path is where it actually bites:
+  -- the delete has already run by the time a later element of the array fails, so anything
+  -- less than one transaction leaves the log with no sources at all.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_upsert_smoke_daily_log(
+              gen_random_uuid(), v_lotV, v_day + 1,
+              jsonb_build_array(
+                jsonb_build_object('lot_id', v_lotV,             'input_weight_kg', 30.00),
+                jsonb_build_object('lot_id', v_lotU,             'input_weight_kg', 10.00),
+                jsonb_build_object('lot_id', gen_random_uuid(),  'input_weight_kg',  5.00)));
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'SOURCE_LOT_NOT_HERE:%';
+  end;
+  assert v_ok, format('TC-22: a source lot that is not at this chef house got %s',
+                      coalesce(v_err, 'no exception at all'));
+
+  select count(*) into v_n from smoke_daily_log_sources where smoke_daily_log_id = v_logX;
+  assert v_n = 2, format('TC-22: the refused correction left %s source rows, not the original 2', v_n);
+
+  select input_weight_kg into v_kg from smoke_daily_logs where id = v_logX;
+  assert v_kg = 40.00, format('TC-22: the refused correction left the roll-up at %s, not 40.00', v_kg);
+
+  -- The same guarantee one element earlier: a duplicated source lot is named, not left to the
+  -- (smoke_daily_log_id, lot_id) unique to surface as a constraint nobody can translate.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_upsert_smoke_daily_log(
+              gen_random_uuid(), v_lotV, v_day + 1,
+              jsonb_build_array(
+                jsonb_build_object('lot_id', v_lotV, 'input_weight_kg', 30.00),
+                jsonb_build_object('lot_id', v_lotV, 'input_weight_kg', 10.00)));
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'SOURCE_LOT_DUPLICATED:%';
+  end;
+  assert v_ok, format('TC-22: one lot twice in p_sources got %s',
+                      coalesce(v_err, 'no exception at all'));
+
+  --------------------------------------------------------------------------------- TC-23
+  -- The 18:00 correction (Seam 3, Finding 3). A FRESH key against the same (lot_id,
+  -- event_date): same row, sources REPLACED not merged, and the output weight the morning
+  -- visit did not have.
+  v_key := gen_random_uuid();
+  v_logA := fn_upsert_smoke_daily_log(
+              v_key, v_lotV, v_day,
+              jsonb_build_array(jsonb_build_object('lot_id', v_lotV, 'input_weight_kg', 35.00)),
+              p_smoked_weight_kg => 26.00);
+  assert v_logA = v_logV, 'TC-23: the correction created a second log instead of updating the first';
+
+  select count(*) into v_n from smoke_daily_logs where lot_id = v_lotV and event_date = v_day;
+  assert v_n = 1, format('TC-23: %s log rows for one lot-day after the correction', v_n);
+
+  select input_weight_kg into v_kg from smoke_daily_logs where id = v_logV;
+  assert v_kg = 35.00,
+    format('TC-23: input_weight_kg is %s, not 35.00 — the sources were merged, not replaced', v_kg);
+
+  select count(*) into v_n from smoke_daily_log_sources where smoke_daily_log_id = v_logV;
+  assert v_n = 1, format('TC-23: %s source rows after replacing a one-element array', v_n);
+
+  select smoked_weight_kg into v_kg from smoke_daily_logs where id = v_logV;
+  assert v_kg = 26.00, format('TC-23: smoked_weight_kg stored as %s', coalesce(v_kg::text, 'null'));
+
+  -- The morning's brine survives an evening call that does not mention it — the effective
+  -- value, the same shape fn_record_lot_receipt uses for post_drain and the reason.
+  select brine_used_kg into v_kg from smoke_daily_logs where id = v_logV;
+  assert v_kg = 4.00,
+    format('TC-23: the evening visit erased the morning brine (%s)', coalesce(v_kg::text, 'null'));
+
+  --------------------------------------------------------------------------------- TC-24
+  -- The dropped connection (R4). The SAME key, a different payload: the original id comes
+  -- back and NOTHING is written — which is exactly what makes the fresh key above a
+  -- correction rather than a conflict.
+  v_logA := fn_upsert_smoke_daily_log(
+              v_key, v_lotV, v_day,
+              jsonb_build_array(jsonb_build_object('lot_id', v_lotV, 'input_weight_kg', 99.00)),
+              p_smoked_weight_kg => 1.00);
+  assert v_logA = v_logV, 'TC-24: a replayed key returned a different log id';
+
+  select input_weight_kg into v_kg from smoke_daily_logs where id = v_logV;
+  assert v_kg = 35.00, format('TC-24: the replay wrote input_weight_kg %s over the original 35.00', v_kg);
+
+  select smoked_weight_kg into v_kg from smoke_daily_logs where id = v_logV;
+  assert v_kg = 26.00, format('TC-24: the replay wrote smoked_weight_kg %s over the original 26.00', v_kg);
+
   --------------------------------------------------------------------------------- TC-30
   -- R18. post-drain 96.50, inputs 40 + 30 drawn out of lot A → 26.50 pending.
   insert into smoke_daily_logs (lot_id, event_date, recorded_by)
@@ -349,16 +515,40 @@ begin
   select count(*) into v_n from v_lot_pending_work where lot_id = v_lotU;
   assert v_n = 0, 'TC-34: the L3 can read a lot assigned to somebody else (R34, CM 01)';
 
+  -- Both views, or the second one is scoped by whichever card wrote it last.
+  select count(*) into v_n from v_lot_progress;
+  assert v_n = 3, format('TC-34: the L3 sees %s lot(s) in v_lot_progress, not their own 3', v_n);
+
+  select count(*) into v_n from v_lot_progress where lot_id = v_lotU;
+  assert v_n = 0, 'TC-34: the L3 reads somebody else''s lot in v_lot_progress (R34, CM 01)';
+
   --------------------------------------------------------------------------------- TC-35
   -- F6 is not a branch feature. The L3 em dash in the doc's view table, asserted.
   perform set_config('request.jwt.claims', json_build_object('sub', v_l2)::text, true);
   select count(*) into v_n from v_lot_pending_work;
   assert v_n = 0, format('TC-35: an L2 reads %s row(s) of a chef-house view', v_n);
+  select count(*) into v_n from v_lot_progress;
+  assert v_n = 0, format('TC-35: an L2 reads %s row(s) of v_lot_progress', v_n);
 
   -- And the Owner sees all four, or the role test has narrowed the view rather than scoped it.
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   select count(*) into v_n from v_lot_pending_work;
   assert v_n = 4, format('TC-35: the Owner reads %s of 4 lots', v_n);
+  select count(*) into v_n from v_lot_progress;
+  assert v_n = 4, format('TC-35: the Owner reads %s of 4 lots in v_lot_progress', v_n);
+
+  --------------------------------------------------------------------------------- TC-33
+  -- R17 as an absence. Every ingredient of a loss figure is in v_lot_progress and the division
+  -- is not — no percentage of any kind, for any role, and no money column either (BR15). This
+  -- is what stops "partial output against a full dispatch" from reaching a screen as a Loss.
+  select count(*) into v_n
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'v_lot_progress'
+     and (column_name like '%loss%' or column_name like '%yield%' or column_name like '%pct%'
+       or column_name like '%\_thb' or column_name like '%price%' or column_name like '%cost%');
+  assert v_n = 0,
+    format('TC-33/R17: v_lot_progress carries %s loss, yield or money column(s) — the division '
+           'belongs to v_lot_yield after close', v_n);
 
   --------------------------------------------------------------------------------- TC-36
   -- ^ref-64: exactly one grant, and it is SELECT to authenticated. anon holds nothing.
@@ -373,6 +563,18 @@ begin
    where table_schema = 'public' and table_name = 'v_lot_pending_work'
      and grantee = 'authenticated' and privilege_type = 'SELECT';
   assert v_n = 1, 'TC-36: v_lot_pending_work is not readable by authenticated';
+
+  select count(*) into v_n
+    from information_schema.role_table_grants
+   where table_schema = 'public' and table_name = 'v_lot_progress'
+     and grantee in ('anon', 'authenticated');
+  assert v_n = 1, format('TC-36: v_lot_progress holds %s session-role grant(s), not 1', v_n);
+
+  select count(*) into v_n
+    from information_schema.role_table_grants
+   where table_schema = 'public' and table_name = 'v_lot_progress'
+     and grantee = 'authenticated' and privilege_type = 'SELECT';
+  assert v_n = 1, 'TC-36: v_lot_progress is not readable by authenticated';
 
   raise exception 'PRODUCTION_TEST_PASSED';   -- the only clean way back out
 end $$;
