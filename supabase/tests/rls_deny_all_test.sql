@@ -25,7 +25,7 @@
 --   1c  authenticated holds no write privilege anywhere
 --   1d  a table authenticated can SELECT carries a SELECT policy
 --   1e  anon holds EXECUTE on no function in public                         (^ref-64)
---   1f  the seven no-grant functions are executable by neither role, by name (^ref-64)
+--   1f  the ten no-grant functions are executable by neither role, by name   (^ref-64)
 --   1g  every other fn_* is executable by authenticated and not by anon     (^ref-64)
 --
 -- 1a-1d catch a NEW table added by a later card: migration 0005 looped over pg_tables once,
@@ -111,7 +111,7 @@ begin
      and has_function_privilege('anon', p.oid, 'EXECUTE');
   assert v_n = 0, format('ADR-004: anon may execute %s function(s): %s', v_n, v_bad);
 
-  -- 1f. The nine that are granted to NOBODY, by name. (^ref-64)
+  -- 1f. The ten that are granted to NOBODY, by name. (^ref-64)
   --
   --     A list, not a pattern. The point is that these eight are different from the rest,
   --     and a pattern that happened to match them today would stop matching the day a
@@ -129,6 +129,8 @@ begin
   --     primitive (ADR-003). fn_require_owner and fn_require_branch are definer preambles.
   --     ^ref-34 is the ninth: fn_require_central_receiver, the L1-or-delegate preamble.
   --     All nine are called from inside a SECURITY DEFINER function and by nothing else, ever.
+  --     ^ref-40 is the tenth: fn_require_branch_or_owner, the L2-own-branch-or-L1 preamble
+  --     (v0.2:57), which the thaw, the sales range and the branch materials range all call.
   select string_agg(p.proname, ', ' order by p.proname), count(*)
     into v_bad, v_n
     from pg_proc p
@@ -137,7 +139,8 @@ begin
      and p.proname in ('fn_config_value', 'fn_config_numeric', 'fn_config_boolean',
                        'fn_config_date',
                        'fn_post_ledger', 'fn_require_owner', 'fn_require_branch',
-                       'fn_require_operator', 'fn_require_central_receiver')
+                       'fn_require_operator', 'fn_require_central_receiver',
+                       'fn_require_branch_or_owner')
      and (has_function_privilege('anon',          p.oid, 'EXECUTE')
        or has_function_privilege('authenticated', p.oid, 'EXECUTE'));
   assert v_n = 0,
@@ -163,6 +166,7 @@ begin
                            'fn_config_date',
                            'fn_post_ledger', 'fn_require_owner', 'fn_require_branch',
                            'fn_require_operator', 'fn_require_central_receiver',
+                           'fn_require_branch_or_owner',
                            'fn_audit_row', 'fn_audit_log_append_only',
                            'fn_rollup_smoke_log_input', 'fn_require_lot_for_meat',
                            'fn_stock_ledger_append_only', 'fn_stock_ledger_opening_closed',
