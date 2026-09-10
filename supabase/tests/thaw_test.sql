@@ -3,9 +3,11 @@
 -- sweep 1f of rls_deny_all_test.sql (re-asserted at TC-31), and TC-34/TC-35 need two sessions,
 -- so they are thaw_concurrency_test.sh's.
 --
--- Contract assumed from an unmerged lane: lane C's ...0018 puts fn_guard_report_closed on
--- thaw_records as a BEFORE trigger refusing status = 'CLOSED' only (never `<> 'OPEN'`). TC-12
--- and the TC-29 companion go red in the final pass if it tests anything else.
+-- Contract assumed from an unmerged lane: lane C's ...0018 trg_guard_report_closed on
+-- thaw_records raises REPORT_CLOSED, naming the date, when status = 'CLOSED' and no APPROVED
+-- DAILY_REPORT unlock_requests row has expires_at > now(). fn_record_thaw has no closed check of
+-- its own since the ^ref-08 model (ref-08-unlock/PLAN-unlock.md Finding 1): TC-11 and TC-29c need
+-- that trigger to refuse, and TC-12, TC-29 and TC-29b need it to admit UNLOCKED and a live approval.
 --
 -- THE FIXTURE, one branch pair and six lots (TDD "The fixture is ..."). Dates are relative to
 -- current_date, because fn_open_daily_report refuses a future day; the labels are the TDD's.
@@ -25,8 +27,9 @@
 --
 -- MUTATION CHECKS (PLAN T6), DESIGNED, NOT RUN — the 10 Sep parallel build writes tests and runs
 -- none. Each names the assert that must go red:
---   * swap steps 5 and 6 of fn_record_thaw               -> TC-27
---   * step 6 as `status <> 'OPEN'`                        -> TC-12
+--   * move the replay (step 5) after the insert           -> TC-27
+--   * put back a function-side `status = 'CLOSED'` raise  -> TC-29b
+--   * apply the back-dating window to a CLOSED day        -> TC-29b
 --   * compare step 10 on (smoke_date, lot_code)           -> TC-21
 --   * drop thaw_records_idempotency_key                   -> TC-34 (thaw_concurrency_test.sh)
 --   * point step 9 at v_smoke_group_available             -> TC-15
@@ -573,6 +576,8 @@ begin
   assert (v_res ->> 'thaw_record_id') is not null, format('TC-12: an UNLOCKED day answered %s', v_res);
 
   --------------------------------------------------------------------------------- TC-11
+  -- CLOSED, and no unlock_requests row for it: lane C's trigger refuses the thaw_records insert
+  -- by name, before any ledger row.
   update daily_reports set status = 'CLOSED', closed_at = now(), closed_by = v_l2a where id = v_rep;
   select count(*) into v_thaws from thaw_records;
   select count(*) into v_rows  from stock_ledger;
@@ -631,6 +636,56 @@ begin
     values (v_bra, v_today - 3, now(), v_l2a) returning id into v_old;
   v_res := fn_record_thaw(gen_random_uuid(), v_old, v_lotC, v_gC, 1.00);
   assert (v_res ->> 'thaw_record_id') is not null, format('TC-29: the window''s last day answered %s', v_res);
+
+  -------------------------------------------------------------------------------- TC-29b
+  -- ^ref-08's model (ref-08-unlock/PLAN-unlock.md Finding 1): an approval is an unlock_requests
+  -- row, and the day stays CLOSED. Ten days back is outside the 3-day window, and the approved
+  -- correction lands anyway — no REPORT_CLOSED (lane C's trigger admits it) and no
+  -- BACKDATE_NOT_ALLOWED (the window is an OPEN day's question). Column names are the ...0002
+  -- table's; ...0023 (lane H) adds only nullable columns and the APPROVED-needs-expiry check.
+  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by, closed_by, closed_at)
+    values (v_bra, v_today - 10, now() - interval '10 days', 'CLOSED', v_l2a, v_l2a, now() - interval '9 days')
+    returning id into v_old;
+  insert into unlock_requests (target_type, target_id, requested_by, reason, status,
+                               decided_by, decided_at, expires_at)
+    values ('DAILY_REPORT', v_old, v_l2a, 'ละลายเกินจริง ต้องแก้ยอด', 'APPROVED',
+            v_owner, now(), now() + interval '2 hours');
+  v_res := null; v_err := null;
+  begin
+    v_res := fn_record_thaw(gen_random_uuid(), v_old, v_lotC, v_gC, 1.00);
+  exception when others then
+    v_err := sqlerrm;
+  end;
+  assert v_err is null,
+    format('TC-29b: a closed day ten back under a live approval got %s', v_err);
+  select count(*) into v_n from stock_ledger
+   where source_table = 'thaw_records' and source_id = (v_res ->> 'thaw_record_id')::uuid
+     and business_date = v_today - 10;
+  assert v_n = 2, format('TC-29b: the approved correction posted %s row(s) dated to its day', v_n);
+  select status::text into v_txt from daily_reports where id = v_old;
+  assert v_txt = 'CLOSED', format('TC-29b: the thaw moved the approved day to %s', v_txt);
+
+  -------------------------------------------------------------------------------- TC-29c
+  -- The same shape with the approval expired a minute ago: R42 is read at write time, so the
+  -- day is shut again, and nothing is written.
+  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by, closed_by, closed_at)
+    values (v_bra, v_today - 11, now() - interval '11 days', 'CLOSED', v_l2a, v_l2a, now() - interval '10 days')
+    returning id into v_old;
+  insert into unlock_requests (target_type, target_id, requested_by, reason, status,
+                               decided_by, decided_at, expires_at)
+    values ('DAILY_REPORT', v_old, v_l2a, 'หมดเวลาแก้แล้ว', 'APPROVED',
+            v_owner, now() - interval '3 hours', now() - interval '1 minute');
+  select count(*) into v_thaws from thaw_records;
+  select count(*) into v_rows  from stock_ledger;
+  v_ok := false; v_err := null;
+  begin
+    perform fn_record_thaw(gen_random_uuid(), v_old, v_lotC, v_gC, 1.00);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'REPORT_CLOSED:%' || (v_today - 11)::text || '%';
+  end;
+  assert v_ok, format('TC-29c: a closed day under an expired approval got %s', coalesce(v_err, 'no exception at all'));
+  assert (select count(*) from thaw_records) = v_thaws and (select count(*) from stock_ledger) = v_rows,
+    'TC-29c: the refused thaw wrote a record or a ledger row';
 
   raise exception 'THAW_TEST_PASSED';
 end $$;

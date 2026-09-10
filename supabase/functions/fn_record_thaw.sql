@@ -24,17 +24,22 @@
 --                      an L2 — the same answer as another branch's real report, so nothing leaks.
 --    4  REPORT_NOT_FOUND, reachable only by the Owner.
 --    5  THE REPLAY, before any refusal. A thaw commits at 20:55 and its response is lost; the
---       branch closes at 21:00; the client retries at 21:01. Asking CLOSED first would report a
---       write that succeeded as refused, which R4 forbids. The key wins and the payload is
---       ignored. PLAN-sales.md T3 has this order backwards and is recorded as a cross-lane gap.
---    6  status = 'CLOSED' -> REPORT_CLOSED. NEVER `<> 'OPEN'`: UNLOCKED is a past day reopened
---       under R28 and must accept the correction it was reopened for (^fix-receipt-state-floor
---       is the same defect one table over). Lane C's fn_guard_report_closed trigger (...0018)
---       is the backstop; this raise is what a Thai screen can render.
+--       branch closes at 21:00; the client retries at 21:01. Refusing the closed day first would
+--       report a write that succeeded as refused, which R4 forbids. The key wins and the payload
+--       is ignored. A replay never reaches the insert, so the closed-day trigger never sees it.
+--    6  NO CLOSED CHECK OF ITS OWN. REPORT_CLOSED comes from lane C's trg_guard_report_closed
+--       (...0018) on the thaw_records insert at step 11: status = 'CLOSED' and no APPROVED
+--       DAILY_REPORT unlock_request with expires_at > now() (R8, R42). ^ref-08 admits a
+--       correction by writing that approval row and leaves the day CLOSED (ref-08-unlock/
+--       PLAN-unlock.md Finding 1), so a function-side `status = 'CLOSED'` refusal would turn
+--       away exactly the correction the Owner approved. One predicate, in one place
+--       (PARALLEL-LANES.md: B and D "don't add a guard of their own"). The trigger raises
+--       REPORT_CLOSED by name and names the date, so the Thai screen still renders it, and it
+--       fires before any ledger row, so a refused thaw writes nothing.
 --    7  BACKDATE_NOT_ALLOWED, via fn_backdating_allowed(report_date) — never current_date
---       (ADR-014) — and ONLY for an OPEN report. An UNLOCKED report skips it: the unlock IS the
---       escalation for a date outside the window (R28), so testing the window again would make
---       every unlock of an old day useless (lane B handoff, deviation 1).
+--       (ADR-014) — and ONLY for an OPEN report. A CLOSED day under a live approval, and an
+--       UNLOCKED day, skip it: the unlock IS the escalation for a date outside the window (R28),
+--       so testing the window again would make every approved correction of an old day useless.
 --    8  THAW_WEIGHT_INVALID: null, <= 0, or more than 2 decimals. The column is numeric(12,2)
 --       and would round 3.005 silently (BR21).
 --    9  THE SOURCE. Null lot -> LOT_REQUIRED; null group -> SMOKE_GROUP_REQUIRED; a group of
@@ -44,7 +49,7 @@
 --       still on the truck (R43 holds it at the destination) and READY meat already thawed
 --       (PLAN Finding 4, Seam 3). BR 05's picker reads the same view.
 --   10  FIFO, below.
---   11  insert the record, key first.
+--   11  insert the record, key first. Lane C's closed-day trigger fires here (step 6).
 --   12  THAW_OUT. INSUFFICIENT_STOCK from fn_post_ledger is caught and re-raised as
 --       INSUFFICIENT_FROZEN_STOCK naming the lot code, the smoke date and the frozen balance.
 --       It is NOT pre-checked: a balance read outside fn_post_ledger's advisory lock is the race
@@ -127,12 +132,9 @@ begin
   select * into v_thaw from thaw_records where idempotency_key = p_idempotency_key;
 
   if v_thaw.id is null then
-    ------------------------------------------------------------------- 6, 7 the day
-    if v_report.status = 'CLOSED' then
-      raise exception 'REPORT_CLOSED: % is closed at this branch; a correction goes through the unlock path (R8, R28)',
-        v_report.report_date;
-    end if;
-
+    --------------------------------------------------------------------- 7 the window
+    -- Step 6 is lane C's trigger, at the insert (header). The window is an OPEN day's question
+    -- only: a CLOSED day under an approved unlock, and an UNLOCKED day, are the escalation.
     if v_report.status = 'OPEN' and not fn_backdating_allowed(v_report.report_date) then
       raise exception 'BACKDATE_NOT_ALLOWED: % is outside the back-dating window; a correction goes through the unlock path (R28)',
         v_report.report_date;

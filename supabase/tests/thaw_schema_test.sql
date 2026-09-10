@@ -10,8 +10,8 @@
 -- table" loop fails here loudly instead of taking the branches offline.
 --
 -- Contract assumed from an unmerged lane: lane C's ...0018 attaches fn_guard_report_closed to
--- thaw_records as a BEFORE trigger that refuses only status = 'CLOSED'. TC-03's fixture report is
--- OPEN, so the trigger passes it whichever way it lands.
+-- thaw_records as a BEFORE trigger that refuses status = 'CLOSED' without an approved, unexpired
+-- unlock. TC-03's fixture report is OPEN, so the trigger passes it whichever way it lands.
 --
 -- ONE do $$ BLOCK: the harness pipes each file into psql without --single-transaction, and the
 -- closing raise can only roll back the block it is in. Nothing persists.
