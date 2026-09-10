@@ -4,9 +4,11 @@
 -- Covers TC-33 ... TC-62 from TDD-materials.md. TC-32 (a batch replayed on one key by two
 -- sessions at once) lives in materials_concurrency_test.sh.
 --
--- Assumes lane C's ...0018: fn_guard_report_closed raises REPORT_CLOSED on a physical_counts
--- insert against a CLOSED report (PLAN-sales.md T1 §3). TC-60 fails until lane C merges;
--- nothing else here depends on it.
+-- Assumes lane C's ...0018 and lane H's ^ref-08 model: fn_guard_report_closed raises
+-- REPORT_CLOSED on a physical_counts insert against a CLOSED report unless an APPROVED
+-- DAILY_REPORT unlock_requests row with expires_at > now() exists, and an approval leaves the
+-- report CLOSED (PLAN-sales.md T1 §3; ref-08-unlock/PLAN-unlock.md Finding 1). TC-60 and
+-- TC-61's last two cases fail until lanes C and H merge; nothing else here depends on them.
 --
 -- Each assert is a way the count fails silently rather than loudly:
 --   * the count deducts as well, and M6's missing tube disappears from every report (R19)
@@ -571,9 +573,15 @@ begin
   assert v_err like 'BACKDATE_NOT_ALLOWED%',
     format('TC-61: a day ten back took a count with a 3-day window, got [%s]', coalesce(v_err, 'no error at all'));
 
-  -- The same day, UNLOCKED. The approved unlock is the escalation for an old day, so the window
-  -- no longer applies (v0.2:401 D07; the coordinator's rule, shared with lanes B and C).
-  update daily_reports set status = 'UNLOCKED' where id = v_rep_old;
+  -- The same day, CLOSED, under an APPROVED, unexpired DAILY_REPORT unlock. That is lane H's
+  -- model: the approval writes an unlock_requests row and leaves the report CLOSED
+  -- (PLAN-unlock.md Finding 1). The window applies to OPEN days only, so lane C's trigger
+  -- decides, and it admits the write however old the day is (v0.2:401 D07).
+  update daily_reports set status = 'CLOSED', closed_by = v_adm_a, closed_at = now() where id = v_rep_old;
+  insert into unlock_requests (target_type, target_id, requested_by, reason, status,
+                               decided_by, decided_at, expires_at)
+       values ('DAILY_REPORT', v_rep_old, v_adm_a, 'นับวัสดุย้อนหลัง', 'APPROVED',
+               v_owner, now(), now() + interval '1 day');
   v_err := null;
   begin
     perform fn_record_physical_count(gen_random_uuid(), v_rep_old,
@@ -581,9 +589,24 @@ begin
   exception when others then v_err := sqlerrm;
   end;
   assert v_err is null,
-    format('TC-61: an UNLOCKED day ten back refused a count — the unlock is the escalation, got [%s]', v_err);
+    format('TC-61: a CLOSED day ten back under a live unlock refused a count, got [%s]', v_err);
   select count(*) into v_n from physical_counts where daily_report_id = v_rep_old;
   assert v_n = 1, format('TC-61: the unlocked day holds %s count rows, expected 1', v_n);
+
+  -- The same unlock, expired. It is still APPROVED, so this is R42's clock read at write time,
+  -- not a sweep. The trigger refuses; the function raised no BACKDATE for a CLOSED day.
+  update unlock_requests set expires_at = now() - interval '1 minute'
+   where target_type = 'DAILY_REPORT' and target_id = v_rep_old;
+  v_err := null;
+  begin
+    perform fn_record_physical_count(gen_random_uuid(), v_rep_old,
+      jsonb_build_array(jsonb_build_object('item_type', 'CHILLI_PASTE', 'counted_qty', 86)));
+  exception when others then v_err := sqlerrm;
+  end;
+  assert v_err like '%REPORT_CLOSED%',
+    format('TC-61: a CLOSED day with an expired unlock took a count, got [%s]', coalesce(v_err, 'no error at all'));
+  select count(*) into v_n from physical_counts where daily_report_id = v_rep_old;
+  assert v_n = 1, format('TC-61: the expired unlock let %s count rows onto the day, expected 1', v_n);
 
   --------------------------------------------------------------------------------- TC-62
   assert has_function_privilege('authenticated', 'public.fn_record_physical_count(uuid, uuid, jsonb)', 'EXECUTE'),
