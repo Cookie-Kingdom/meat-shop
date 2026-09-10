@@ -65,6 +65,24 @@ begin
       p_value_numeric, p_value_text, p_value_json;
   end if;
 
+  -- The two unlock numbers have a shape the rest of the system relies on (^ref-08).
+  -- unlock_max_days_back: R28 says "a negative value is refused at the config writer", and
+  -- fn_backdating_allowed deliberately does not validate. A fraction would be rounded by its
+  -- `::integer` and read as a different day than the Owner typed. 0 is legal and means today
+  -- only. unlock_window_hours: 0 or less would grant an approval that has expired before
+  -- anyone can use it (R42). Covered by unlock_test.sql UL-43 ... UL-46.
+  if p_key = 'unlock_max_days_back'
+     and (p_value_numeric is null or p_value_numeric < 0
+          or p_value_numeric <> trunc(p_value_numeric)) then
+    raise exception 'CONFIG_VALUE_INVALID: unlock_max_days_back is a whole number of days, 0 or more — got % (R28)',
+      coalesce(p_value_numeric::text, 'a non-numeric value');
+  end if;
+  if p_key = 'unlock_window_hours'
+     and (p_value_numeric is null or p_value_numeric <= 0) then
+    raise exception 'CONFIG_VALUE_INVALID: unlock_window_hours must be more than 0 — got % (R42)',
+      coalesce(p_value_numeric::text, 'a non-numeric value');
+  end if;
+
   insert into config_settings (
     key, scope_location_id, value_numeric, value_text, value_json,
     effective_from, created_by, note)

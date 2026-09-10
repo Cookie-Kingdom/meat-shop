@@ -24,6 +24,12 @@ export default function OwnerHome() {
       >
         OW 11 · ประวัติการแก้ไข →
       </Link>
+      <Link
+        href="/owner/audit#unlock"
+        className="text-label text-accent hover:underline"
+      >
+        OW 11 · คำขอปลดล็อก →
+      </Link>
     </div>
   );
 }
