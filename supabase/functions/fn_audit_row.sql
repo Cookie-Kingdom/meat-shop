@@ -30,6 +30,8 @@ declare
   v_row    jsonb;
   v_actor  uuid;
   v_role   user_role;
+  v_row_id uuid;
+  v_pk     text;
 begin
   -- Branch, do not CASE: referencing `old` in an INSERT trigger raises "record old is not
   -- assigned yet" when plpgsql passes it into the expression, short-circuit or not.
@@ -52,13 +54,50 @@ begin
   -- want a per-statement cache, not a redesign.
   select p.id, p.role into v_actor, v_role from profiles p where p.id = auth.uid();
 
+  -- ROW_ID IS RESOLVED, NOT ASSUMED (^ref-62). This trigger is attached by a blanket loop
+  -- over pg_tables, so it fires on every table the project will ever add — and a plain
+  -- `(v_row ->> 'id')::uuid` assumes every one of them has a uuid column called `id`.
+  -- ^ref-62 produced the first two that do not, and they fail in two different ways:
+  --
+  --   opening_costs           PK is `ledger_id`. No `id` at all, so row_id was silently
+  --                           null — an audit row that cannot be traced to the row it
+  --                           audits, which is most of what an audit row is for.
+  --   opening_balance_close   PK is `id boolean` (the single-row idiom). `'true'::uuid`
+  --                           raises invalid_text_representation INSIDE the trigger, so the
+  --                           insert it was auditing fails too. A logging concern taking
+  --                           down the write it observes is the worst shape this can have.
+  --
+  -- So: `id` when it casts, otherwise the table's single-column uuid primary key, otherwise
+  -- null. The catalogue lookup only runs on the fallback path, so every existing table pays
+  -- one cast and nothing else.
+  if v_row ? 'id' then
+    begin
+      v_row_id := (v_row ->> 'id')::uuid;
+    exception when invalid_text_representation then
+      v_row_id := null;
+    end;
+  end if;
+
+  if v_row_id is null then
+    select a.attname into v_pk
+      from pg_index i
+      join pg_attribute a on a.attrelid = i.indrelid and a.attnum = i.indkey[0]
+     where i.indrelid = tg_relid
+       and i.indisprimary
+       and i.indnatts = 1
+       and a.atttypid = 'uuid'::regtype;
+    if v_pk is not null then
+      v_row_id := (v_row ->> v_pk)::uuid;
+    end if;
+  end if;
+
   insert into audit_log (
     table_name, row_id, action, actor_id, actor_role, event_date,
     before, after, reason, idempotency_key
     -- created_at is never listed: it takes its default now(). Card acceptance.
   ) values (
     tg_table_name,
-    (v_row ->> 'id')::uuid,
+    v_row_id,
     tg_op,
     v_actor,
     v_role,
