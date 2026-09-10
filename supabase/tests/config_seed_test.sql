@@ -138,8 +138,8 @@ begin
     from v_config_readiness where source = 'config_settings';
   select array_agg(item_key) into v_block_keys
     from v_config_readiness where source = 'config_settings' and severity = 'BLOCK';
-  assert coalesce(array_length(v_block_keys, 1), 0) = 9,
-    format('TC-03: expected 9 BLOCK config keys in the view, found %s — the check below would '
+  assert coalesce(array_length(v_block_keys, 1), 0) = 7,
+    format('TC-03: expected 7 BLOCK config keys in the view, found %s — the check below would '
            'be vacuous', coalesce(array_length(v_block_keys, 1), 0));
 
   select string_agg(key, ', ' order by key) into v_txt
@@ -147,7 +147,8 @@ begin
    where is_seed
      and (key = any(v_config_keys)
           or key in ('line_man_gp_pct', 'corporate_tax_pct',
-                     'box_sale_price_thb', 'addon_sealed_meat_price_thb'));
+                     'box_sale_price_thb', 'addon_sealed_meat_price_thb',
+                     'rice_sale_price_thb_per_kg', 'chilli_paste_sale_price_thb_per_tube'));
   assert v_txt is null, format('TC-03: the seed invented an Owner number for %s', v_txt);
 
   --------------------------------------------------------------------- TC-04 / TC-05, the pair
@@ -201,11 +202,10 @@ begin
   assert v_num = 20.00, format('TC-08: the seed does not answer for 2020-01-01 (%s)', v_num);
 
   --------------------------------------------------------------------------------- TC-09
-  -- The requirement list, exactly: 12 BLOCK + 8 WARN (PLAN-config-seed.md Finding 5).
+  -- The requirement list, exactly: 10 BLOCK + 8 WARN (PLAN-config-seed.md Finding 5).
   select string_agg(item_key, ',' order by item_key) into v_txt from v_config_readiness;
   select string_agg(k, ',' order by k) into v_want from unnest(array[
-    'smoke_fee_tiers', 'avg_pack_weight_kg', 'product_prices', 'rice_sale_price_thb_per_kg',
-    'chilli_paste_sale_price_thb_per_tube', 'brine_cost_thb_per_kg',
+    'smoke_fee_tiers', 'avg_pack_weight_kg', 'product_prices', 'brine_cost_thb_per_kg',
     'freight_thb_by_vehicle_type', 'freight_alloc_method', 'full_stock_qty',
     'receipt_variance_settlement_method', 'opening_cutoff_date', 'unlock_window_hours',
     'opening_balances_open', 'alert_recipients', 'alert_enabled',
@@ -221,8 +221,8 @@ begin
                              or affects_roles is null or is_set is null)
     into v_n, v_n2, v_n3
     from v_config_readiness;
-  assert v_n = 12 and v_n2 = 8 and v_n3 = 0,
-    format('TC-10: %s BLOCK, %s WARN, %s malformed row(s); expected 12, 8, 0', v_n, v_n2, v_n3);
+  assert v_n = 10 and v_n2 = 8 and v_n3 = 0,
+    format('TC-10: %s BLOCK, %s WARN, %s malformed row(s); expected 10, 8, 0', v_n, v_n2, v_n3);
 
   ------------------------------------------------------------------- TC-11, no value column
   -- The whole reason all three roles may read this view (ADR-023, R20).
@@ -284,23 +284,19 @@ begin
     'TC-16: a branch-only row reads as set for a global key — a global lookup never picks a '
     'branch row (R36), so the opening path still raises';
 
-  --------------------------------------------------------------- TC-17, branch-scoped key
-  delete from config_settings where key = 'rice_sale_price_thb_per_kg';
-  insert into config_settings (key, scope_location_id, value_numeric, effective_from, created_by)
-       values ('rice_sale_price_thb_per_kg', v_br_a, 45.00, current_date - 1, v_owner);
-  select is_set into v_set from v_config_readiness where item_key = 'rice_sale_price_thb_per_kg';
-  assert not v_set, 'TC-17: one branch priced reads as set while branch B still raises';
-
-  insert into config_settings (key, scope_location_id, value_numeric, effective_from, created_by)
-       values ('rice_sale_price_thb_per_kg', v_br_b, 45.00, current_date - 1, v_owner);
-  select is_set into v_set from v_config_readiness where item_key = 'rice_sale_price_thb_per_kg';
-  assert v_set, 'TC-17: every active branch priced still reads unset';
-
-  delete from config_settings where key = 'rice_sale_price_thb_per_kg';
-  insert into config_settings (key, value_numeric, effective_from, created_by)
-       values ('rice_sale_price_thb_per_kg', 45.00, current_date - 1, v_owner);
-  select is_set into v_set from v_config_readiness where item_key = 'rice_sale_price_thb_per_kg';
-  assert v_set, 'TC-17: a global row reads unset — every branch falls back to it (R36)';
+  ---------------------------------------------------------- TC-17, one source for a price
+  -- Lane C's fn_record_sales prices every SKU — rice and chilli included — from
+  -- product_prices and reads no sale-price config key (fn_record_sales.sql:228). A readiness
+  -- row for one of those keys would send the Owner to set a number that unblocks nothing,
+  -- and would be a BLOCK row with no CONFIG_NOT_SET behind it (R35).
+  select count(*) into v_n from v_config_readiness
+   where item_key in ('box_sale_price_thb', 'addon_sealed_meat_price_thb',
+                      'rice_sale_price_thb_per_kg', 'chilli_paste_sale_price_thb_per_tube');
+  assert v_n = 0,
+    format('TC-17: %s sale-price config key(s) are listed — prices live in product_prices', v_n);
+  select count(*) into v_n from v_config_readiness
+   where item_key = 'product_prices' and severity = 'BLOCK';
+  assert v_n = 1, 'TC-17: product_prices is not the BLOCK row for selling prices';
 
   ------------------------------------------------------------------------ TC-18, tier set
   delete from smoke_fee_tiers;

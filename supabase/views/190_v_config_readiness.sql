@@ -12,13 +12,19 @@
 --
 -- THE LIST IS HAND-KEPT HERE, on purpose and with the cost ADR-023 names: a new required key
 -- nobody adds below is silently ungated — which is why R35 puts the enforcement in the RPC.
--- 12 BLOCK + 8 WARN. It differs from API_DATA_MODEL.md's list in five places
+-- 10 BLOCK + 8 WARN. It differs from API_DATA_MODEL.md's list in six places
 -- (PLAN-config-seed.md Finding 5):
 --   chilli_paste_cost_thb_per_tube  removed — v0.2 gives 15 (:335), so …0024 seeds it
+--   rice_sale_price_thb_per_kg,
+--   chilli_paste_sale_price_thb_per_tube
+--                                   removed — lane C's built fn_record_sales prices EVERY SKU,
+--                                   RICE_KG and CHILLI_TUBE included, from product_prices
+--                                   (fn_record_sales.sql:228) and reads neither key. A BLOCK
+--                                   row nothing consumes breaks R35, and would send the Owner
+--                                   to set a number that unblocks nothing.
 --   freight_alloc_method            added   — D04.1 leaves the method to the Owner, and
 --                                             fn_create_transport_run already raises on it
---   product_prices                  every active product, because fn_record_sales prices each
---                                   line from product_prices by SKU (PLAN-sales T3)
+--   product_prices                  every active product, for that same reason
 --   smoke_fee_tiers                 gates v_lot_cost only — ADR-024 took pricing out of
 --                                   fn_close_lot
 --   product_costs                   added (WARN), lane K's request: a rice or water cost left
@@ -27,14 +33,15 @@
 --                                   key decides, BR13) are not asked.
 --
 -- "SET" MEANS "WOULD RESOLVE TODAY", or the view says set while the RPC still raises:
---   config, GLOBAL   a scope_location_id-null row with effective_from <= current_date. A
---                    branch-only row does not resolve for a global lookup (R36).
---   config, BRANCH   a global row, or a row for EVERY active branch.
+--   config key       a scope_location_id-null row with effective_from <= current_date. Every
+--                    config key listed is global; a branch-only row does not resolve for a
+--                    global lookup (R36), so it does not count.
 --   smoke_fee_tiers  any band set in effect — fn_set_smoke_fee_tier validated it as a set.
 --   product_prices,
 --   full_stock_qty   at least one active product / packaging item AND every one resolves.
 --                    Zero items is NOT "all set": vacuous truth would read an empty catalogue
---                    as configured, which is R9's null-is-not-zero failure over again.
+--                    as configured, which is R9's null-is-not-zero failure over again. A
+--                    packaging item resolves on a global row, or a row for EVERY active branch.
 --   product_costs    no active non-meat, non-chilli product whose CURRENT price row lacks a
 --                    cost. Vacuous truth is right here and only here: it is a completeness
 --                    WARN over products that exist, and an empty catalogue is already the
@@ -42,6 +49,9 @@
 --   opening_balance_close  the one-row switch has its row (ADR-021, R46).
 -- `current_date` — the same "today" v_config_history (050) uses, so the two views cannot
 -- disagree about whether a row is in force.
+--
+-- "SET" IS NOT "WELL-FORMED". A jsonb key such as freight_thb_by_vehicle_type counts as set
+-- whatever its shape; the shape is its reader's to refuse (PLAN-config-seed.md gap 12).
 --
 -- WHO READS IT: every ACTIVE profile, any role — `fn_current_role() is not null` (R34). A
 -- deactivated profile resolves to null and reads nothing; anon holds no grant. SECURITY
@@ -52,74 +62,68 @@
 -- `affects_roles` is who a missing item stops. The L2/L3 notice lists only their rows; the
 -- Owner sees all of them. It is not an access rule — every role reads every row.
 --
--- ponytail: correlated EXISTS per row, no index. Twenty rows over tables of tens of rows.
+-- ponytail: correlated EXISTS per row, no index. Eighteen rows over tables of tens of rows.
 -- Ceiling: config_settings past ~10k rows, when 050's ceiling arrives too.
 --
 -- Covered by supabase/tests/config_seed_test.sql (TC-09 … TC-26).
 
 create or replace view public.v_config_readiness as
-with req (sort_order, item_key, source, scope, severity, feature, label_th, gates_th, affects_roles) as (
+with req (sort_order, item_key, source, severity, feature, label_th, gates_th, affects_roles) as (
   values
     -- ── BLOCK: the feature raises CONFIG_NOT_SET until the item exists ──────────────────────
-    (10, 'smoke_fee_tiers', 'smoke_fee_tiers', 'GLOBAL', 'BLOCK', 'F7',
+    (10, 'smoke_fee_tiers', 'smoke_fee_tiers', 'BLOCK', 'F7',
      'ค่ารมควัน (บาท/กรัม)', 'คำนวณต้นทุนล็อต',
      array['L1_OWNER']::user_role[]),
-    (20, 'avg_pack_weight_kg', 'config_settings', 'GLOBAL', 'BLOCK', 'F10',
+    (20, 'avg_pack_weight_kg', 'config_settings', 'BLOCK', 'F10',
      'น้ำหนักเฉลี่ยต่อซอง', 'บันทึกยอดขายเนื้อ และตรวจ Diff ตอนปิดวัน',
      array['L1_OWNER', 'L2_BRANCH_ADMIN']::user_role[]),
-    (30, 'product_prices', 'product_prices', 'GLOBAL', 'BLOCK', 'F10',
+    (30, 'product_prices', 'product_prices', 'BLOCK', 'F10',
      'ราคาขายสินค้าทุกรายการ (กล่อง 350 / เนื้อซีล 320 ตามข้อกำหนด)', 'บันทึกยอดขาย',
      array['L1_OWNER', 'L2_BRANCH_ADMIN']::user_role[]),
-    (40, 'rice_sale_price_thb_per_kg', 'config_settings', 'BRANCH', 'BLOCK', 'F11',
-     'ราคาขายข้าวเหนียว', 'คิดรายได้ข้าวเหนียว',
-     array['L1_OWNER', 'L2_BRANCH_ADMIN']::user_role[]),
-    (50, 'chilli_paste_sale_price_thb_per_tube', 'config_settings', 'GLOBAL', 'BLOCK', 'F11',
-     'ราคาขายน้ำพริก', 'คิดรายได้น้ำพริก',
-     array['L1_OWNER', 'L2_BRANCH_ADMIN']::user_role[]),
-    (60, 'brine_cost_thb_per_kg', 'config_settings', 'GLOBAL', 'BLOCK', 'F7',
+    (60, 'brine_cost_thb_per_kg', 'config_settings', 'BLOCK', 'F7',
      'ต้นทุนน้ำดอง', 'คำนวณต้นทุนล็อต',
      array['L1_OWNER']::user_role[]),
-    (70, 'freight_thb_by_vehicle_type', 'config_settings', 'GLOBAL', 'BLOCK', 'F5',
+    (70, 'freight_thb_by_vehicle_type', 'config_settings', 'BLOCK', 'F5',
      'ค่าขนส่งตามประเภทรถ', 'ตั้งค่าเที่ยวรถ',
      array['L1_OWNER']::user_role[]),
-    (80, 'freight_alloc_method', 'config_settings', 'GLOBAL', 'BLOCK', 'F5',
+    (80, 'freight_alloc_method', 'config_settings', 'BLOCK', 'F5',
      'วิธีเฉลี่ยค่าขนส่งหลายล็อต', 'สร้างรอบขนส่ง และจัดสรรเนื้อไปสาขา',
      array['L1_OWNER']::user_role[]),
-    (90, 'full_stock_qty', 'packaging_full_stock', 'GLOBAL', 'BLOCK', 'F11',
+    (90, 'full_stock_qty', 'packaging_full_stock', 'BLOCK', 'F11',
      'สต๊อกเต็มของวัสดุทุกรายการ', 'แจ้งเตือนวัสดุใกล้หมด',
      array['L1_OWNER', 'L2_BRANCH_ADMIN']::user_role[]),
-    (100, 'receipt_variance_settlement_method', 'config_settings', 'GLOBAL', 'BLOCK', 'F8',
+    (100, 'receipt_variance_settlement_method', 'config_settings', 'BLOCK', 'F8',
      'วิธีปิดส่วนต่างที่ขาด', 'ปิดส่วนต่างตอนรับเข้าคลังกลาง',
      array['L1_OWNER']::user_role[]),
-    (110, 'opening_cutoff_date', 'config_settings', 'GLOBAL', 'BLOCK', 'F3',
+    (110, 'opening_cutoff_date', 'config_settings', 'BLOCK', 'F3',
      'วันที่ยอดยกมาเป็นจริง', 'บันทึกยอดยกมา',
      array['L1_OWNER', 'L2_BRANCH_ADMIN', 'L3_CM_OPERATOR']::user_role[]),
-    (120, 'unlock_window_hours', 'config_settings', 'GLOBAL', 'BLOCK', 'F1',
+    (120, 'unlock_window_hours', 'config_settings', 'BLOCK', 'F1',
      'ปลดล็อกแล้วใช้ได้กี่ชั่วโมง', 'ขอเปิดแก้ข้อมูลย้อนหลัง',
      array['L1_OWNER', 'L2_BRANCH_ADMIN', 'L3_CM_OPERATOR']::user_role[]),
     -- ── WARN: it runs, a capability is missing ───────────────────────────────────────────
-    (200, 'opening_balances_open', 'opening_balance_close', 'GLOBAL', 'WARN', 'F3',
+    (200, 'opening_balances_open', 'opening_balance_close', 'WARN', 'F3',
      'ยังไม่ได้ปิดรับยอดยกมา', 'ระหว่างนี้ย้อนหลังได้ไม่จำกัดวัน — ปิดทันทีที่กรอกยอดครบ',
      array['L1_OWNER']::user_role[]),
-    (210, 'alert_recipients', 'config_settings', 'GLOBAL', 'WARN', 'F14',
+    (210, 'alert_recipients', 'config_settings', 'WARN', 'F14',
      'ผู้รับการแจ้งเตือนและช่องทาง', 'ส่งการแจ้งเตือน',
      array['L1_OWNER']::user_role[]),
-    (220, 'alert_enabled', 'config_settings', 'GLOBAL', 'WARN', 'F14',
+    (220, 'alert_enabled', 'config_settings', 'WARN', 'F14',
      'เปิด/ปิดการแจ้งเตือนแต่ละประเภท', 'ส่งการแจ้งเตือน',
      array['L1_OWNER']::user_role[]),
-    (230, 'central_warehouse_keeper_ids', 'config_settings', 'GLOBAL', 'WARN', 'F14',
+    (230, 'central_warehouse_keeper_ids', 'config_settings', 'WARN', 'F14',
      'ผู้รับของเข้าคลังกลาง', 'ส่งการแจ้งเตือนถึงผู้ดูแลคลัง',
      array['L1_OWNER']::user_role[]),
-    (240, 'vehicle_schedule', 'config_settings', 'GLOBAL', 'WARN', 'F14',
+    (240, 'vehicle_schedule', 'config_settings', 'WARN', 'F14',
      'ตารางรถเข้า', 'วางแผนวันรถเข้า',
      array['L1_OWNER']::user_role[]),
-    (250, 'material_reorder_point_qty', 'config_settings', 'GLOBAL', 'WARN', 'F11',
+    (250, 'material_reorder_point_qty', 'config_settings', 'WARN', 'F11',
      'จุดสั่งซื้อวัสดุ', 'เตือนตามจำนวนคงเหลือ (เตือน 20% ยังทำงาน)',
      array['L1_OWNER']::user_role[]),
-    (260, 'material_days_of_cover_target', 'config_settings', 'GLOBAL', 'WARN', 'F11',
+    (260, 'material_days_of_cover_target', 'config_settings', 'WARN', 'F11',
      'จำนวนวันที่ต้องมีของสำรอง', 'เตือนตามจำนวนวันสำรอง (เตือน 20% ยังทำงาน)',
      array['L1_OWNER']::user_role[]),
-    (270, 'product_costs', 'product_prices', 'GLOBAL', 'WARN', 'F13',
+    (270, 'product_costs', 'product_prices', 'WARN', 'F13',
      'ต้นทุนสินค้าที่ไม่ใช่เนื้อและน้ำพริก (เช่น ข้าว น้ำเปล่า)', 'แสดงกำไรขาดทุนแบบครบ',
      array['L1_OWNER']::user_role[])
 )
@@ -138,17 +142,6 @@ select
          where c.key = r.item_key
            and c.scope_location_id is null
            and c.effective_from <= current_date)
-      or (
-        r.scope = 'BRANCH'
-        and exists (select 1 from locations l where l.kind = 'BRANCH' and l.is_active)
-        and not exists (
-          select 1 from locations l
-           where l.kind = 'BRANCH' and l.is_active
-             and not exists (
-               select 1 from config_settings c
-                where c.key = r.item_key
-                  and c.scope_location_id = l.id
-                  and c.effective_from <= current_date)))
 
     when r.source = 'smoke_fee_tiers' then
       exists (select 1 from smoke_fee_tiers t where t.effective_from <= current_date)
