@@ -42,6 +42,15 @@ export default function OwnerHome() {
       >
         OW 02 · ขนส่ง →
       </Link>
+      <Link href="/owner/returns" className="text-label text-accent hover:underline">
+        OW 05 · ต้นทุนและนัดรับขากลับ →
+      </Link>
+      <Link href="/owner/central" className="text-label text-accent hover:underline">
+        OW 06 · สต็อกกลาง →
+      </Link>
+      <Link href="/owner/allocate" className="text-label text-accent hover:underline">
+        OW 07 · จัดสรรสู่สาขา →
+      </Link>
     </div>
   );
 }
