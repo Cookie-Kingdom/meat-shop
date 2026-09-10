@@ -1,10 +1,10 @@
--- Cards ^ref-26 and ^ref-27 — fn_require_operator, fn_record_lot_receipt, v_lot_pending_work,
--- fn_upsert_smoke_daily_log and v_lot_progress.
+-- Cards ^ref-26, ^ref-27 and ^ref-28 — fn_require_operator, fn_record_lot_receipt,
+-- v_lot_pending_work, fn_upsert_smoke_daily_log, v_lot_progress and fn_record_lot_bags.
 --
--- Covers TC-09 ... TC-24 and TC-30 ... TC-36 from TDD-lots.md, and red→green slices 3, 4, 5,
--- 6, 7, 8 and 9. TC-25 ... TC-29 (the bags and their concurrency) belong to ^ref-28 and are
--- not in this file yet; the file is named for the range so that card appends to it rather
--- than starting a fourth production test.
+-- Covers TC-09 ... TC-28b and TC-30 ... TC-36 from TDD-lots.md, and red→green slices 3 ... 9.
+-- TC-29 is the bags' concurrency and needs two sessions, so it is
+-- production_concurrency_test.sh; this file is named for the range so each card appends to
+-- it rather than starting another production test.
 --
 -- ONE do $$ BLOCK, and it has to stay one. migrations_apply_test.sh pipes each file into psql
 -- WITHOUT --single-transaction, so every top-level statement is its own transaction: a second
@@ -53,6 +53,8 @@ declare
   v_logV    uuid;
   v_logX    uuid;
   v_key     uuid;
+  v_grp     uuid;
+  v_w       numeric[];
 begin
   ------------------------------------------------------------------------------- fixtures
   insert into auth.users (id) values (v_owner), (v_l2), (v_l3), (v_l3b), (v_l3c), (v_gone);
@@ -442,6 +444,117 @@ begin
 
   select smoked_weight_kg into v_kg from smoke_daily_logs where id = v_logV;
   assert v_kg = 26.00, format('TC-24: the replay wrote smoked_weight_kg %s over the original 26.00', v_kg);
+
+  --------------------------------------------------------------------------------- TC-25
+  -- CM 04's bottom half (BR18, R7). Sixty pack weights on lot V's first smoke date, one call.
+  -- One group, sixty bags, and the group's totals are the roll-up's — fn_record_lot_bags never
+  -- writes them (Finding 7).
+  v_w := array(select 0.50 + (i % 7) * 0.01 from generate_series(1, 60) i);
+  select sum(w) into v_kg from unnest(v_w) w;
+  select count(*) into v_ledger from stock_ledger;
+  v_key := gen_random_uuid();
+  v_n := fn_record_lot_bags(v_key, v_lotV, v_day, v_w);
+  assert v_n = 60, format('TC-25: fn_record_lot_bags reported %s bags, not 60', v_n);
+
+  select count(*) into v_n from smoke_date_groups where lot_id = v_lotV and smoke_date = v_day;
+  assert v_n = 1, format('TC-25: %s smoke-date groups for one (lot, smoke_date)', v_n);
+  select id into v_grp from smoke_date_groups where lot_id = v_lotV and smoke_date = v_day;
+
+  select count(*) into v_n from lot_bags where smoke_date_group_id = v_grp;
+  assert v_n = 60, format('TC-25: %s bags in the group, not 60', v_n);
+
+  select count(*) into v_n from smoke_date_groups
+   where id = v_grp and bag_count = 60 and packed_weight_kg = v_kg;
+  assert v_n = 1,
+    format('TC-25: the group does not read 60 bags / %s kg — the roll-up did not fire', v_kg);
+
+  -- CM 05's progress view reads that same roll-up, never the log's packed columns (Finding 7).
+  select count(*) into v_n from v_lot_progress
+   where lot_id = v_lotV and bag_count = 60 and packed_weight_kg = v_kg;
+  assert v_n = 1, 'TC-25: v_lot_progress does not read the group roll-up after the first batch';
+
+  select count(*) - v_ledger into v_n from stock_ledger;
+  assert v_n = 0,
+    format('TC-25: fn_record_lot_bags posted %s ledger row(s) — the bags post at close (Finding 10)', v_n);
+
+  --------------------------------------------------------------------------------- TC-26
+  -- The dropped connection on a 60-bag save (Seam 3, R39). Same key, same array: the same
+  -- count comes back and nothing is written twice — the whole risk on this table, because a
+  -- replay would mint seqs 61 ... 120 and the pair index would never fire.
+  v_n := fn_record_lot_bags(v_key, v_lotV, v_day, v_w);
+  assert v_n = 60, format('TC-26: the replay reported %s bags, not the original 60', v_n);
+
+  select count(*) into v_n from lot_bags where smoke_date_group_id = v_grp;
+  assert v_n = 60, format('TC-26: %s bags after the replay — the batch was written twice', v_n);
+
+  select count(*) into v_n from smoke_date_groups where id = v_grp and packed_weight_kg = v_kg;
+  assert v_n = 1, 'TC-26: the replay moved the group''s packed_weight_kg';
+
+  --------------------------------------------------------------------------------- TC-27
+  -- Same key, a longer array. (key, 61) collides with nothing in lot_bags_batch_key, so the
+  -- index alone would have let bag 61 in; the explicit key check is the enforcement.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_record_lot_bags(v_key, v_lotV, v_day, v_w || 0.55::numeric);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'LOT_BAGS_IDEMPOTENCY_CONFLICT:%';
+  end;
+  assert v_ok, format('TC-27: a replayed key carrying 61 weights got %s',
+                      coalesce(v_err, 'no exception at all'));
+
+  select count(*) into v_n from lot_bags where smoke_date_group_id = v_grp;
+  assert v_n = 60, format('TC-27: %s bags after the refused call, not 60', v_n);
+
+  --------------------------------------------------------------------------------- TC-28
+  -- A second genuine batch on the same smoke date APPENDS (Seam 3) — neither a correction nor
+  -- a conflict. The unique on (smoke_date_group_id, seq) rules out a repeat, so 70 rows with
+  -- min 1 and max 70 is "no gap and no restart".
+  v_n := fn_record_lot_bags(gen_random_uuid(), v_lotV, v_day,
+                            array(select 0.48::numeric from generate_series(1, 10)));
+  assert v_n = 10, format('TC-28: the second batch reported %s bags, not 10', v_n);
+
+  select count(*) || '/' || min(seq) || '/' || max(seq) into v_txt
+    from lot_bags where smoke_date_group_id = v_grp;
+  assert v_txt = '70/1/70', format('TC-28: bags/min seq/max seq read %s, not 70/1/70', v_txt);
+
+  select count(*) into v_n from smoke_date_groups
+   where id = v_grp and bag_count = 70 and packed_weight_kg = v_kg + 4.80;
+  assert v_n = 1, 'TC-28: the group roll-up did not add the second batch';
+
+  select count(*) into v_n from smoke_date_groups where lot_id = v_lotV;
+  assert v_n = 1, format('TC-28: %s groups for lot V — the second batch opened a new one', v_n);
+
+  -------------------------------------------------------------------------------- TC-28a
+  -- A smoke date the lot was never logged on (TDD open question 5). CM 04 has one date field,
+  -- so the bags' smoke date IS the log's date; a date with no log is meat from nowhere, and
+  -- the refusal leaves no group behind.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_record_lot_bags(gen_random_uuid(), v_lotV, v_day + 9, array[0.50]::numeric[]);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'SMOKE_LOG_MISSING:%';
+  end;
+  assert v_ok, format('TC-28a: bags on a day lot V was never logged got %s',
+                      coalesce(v_err, 'no exception at all'));
+
+  select count(*) into v_n from smoke_date_groups where lot_id = v_lotV and smoke_date = v_day + 9;
+  assert v_n = 0, 'TC-28a: the refused call left a smoke-date group behind';
+
+  -------------------------------------------------------------------------------- TC-28b
+  -- A weight that rounds to 0.00 is refused by name and by position, not by the check
+  -- constraint's name. v_day + 1 HAS a log, so it is the weight and not the date refusing it.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_record_lot_bags(gen_random_uuid(), v_lotV, v_day + 1, array[0.50, 0.004]::numeric[]);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'PACK_WEIGHT_INVALID: bag 2 %';
+  end;
+  assert v_ok, format('TC-28b: a pack weight that rounds to 0.00 got %s',
+                      coalesce(v_err, 'no exception at all'));
+
+  select count(*) into v_n from lot_bags b join smoke_date_groups g on g.id = b.smoke_date_group_id
+   where g.lot_id = v_lotV and g.smoke_date = v_day + 1;
+  assert v_n = 0, format('TC-28b: the refused batch wrote %s bag(s)', v_n);
 
   --------------------------------------------------------------------------------- TC-30
   -- R18. post-drain 96.50, inputs 40 + 30 drawn out of lot A → 26.50 pending.

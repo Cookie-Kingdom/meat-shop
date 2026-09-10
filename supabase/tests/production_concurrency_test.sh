@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# TC-29 from TDD-lots.md — two CM 04 saves against the same (lot, smoke date) at the same
+# moment, and every bag from both has to land in one group.
+#
+#   bash supabase/tests/production_concurrency_test.sh
+#
+# A separate runner for the reason transport_concurrency_test.sh gives: the bug only exists
+# between two transactions, and two saves carry two DIFFERENT keys, so nothing at the
+# idempotency layer can see them.
+#
+# TWO RACES, BECAUSE fn_record_lot_bags HAS TWO GUARDS.
+#
+#   1. The group does not exist yet. Both sessions miss it; the second one's
+#      `insert ... on conflict do nothing` waits on the first one's uncommitted row and then
+#      does nothing. A plain insert there surfaces unique_violation on (lot_id, smoke_date).
+#   2. The group exists. Both lock it FOR UPDATE; the second waits and reads max(seq) only
+#      after the first has committed. Without the lock both read the same max, both mint the
+#      same seqs, and the second dies on (smoke_date_group_id, seq).
+#
+# Either failure is an error on a save nobody did wrong, and CM 04's answer to an error is an
+# operator typing 60 weights in again — with wet hands.
+#
+# Deterministic, not raced for: session A saves and sits in pg_sleep before committing; B
+# arrives half a second in, well inside the window.
+#
+# The container is removed on exit, pass or fail.
+
+set -uo pipefail
+cd "$(dirname "$0")/../.."
+
+CONTAINER=meatshop-production-concurrency-test
+PSQL="docker exec -i $CONTAINER psql -U postgres -d meatshop -q -v ON_ERROR_STOP=1"
+OWNER=77777777-7777-7777-7777-7777777777d1
+OP=77777777-7777-7777-7777-7777777777d3
+TMP=$(mktemp -d)
+
+cleanup() { docker rm -f "$CONTAINER" >/dev/null 2>&1 || true; rm -rf "$TMP"; }
+trap cleanup EXIT
+
+docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+docker run -d --name "$CONTAINER" -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=meatshop \
+  postgres:17 >/dev/null || { echo "FAIL  could not start postgres:17"; exit 1; }
+# A real query on our own database, not pg_isready — see transport_concurrency_test.sh.
+ready=
+for _ in $(seq 1 60); do
+  docker exec "$CONTAINER" psql -U postgres -d meatshop -Atqc 'select 1' >/dev/null 2>&1 \
+    && { ready=1; break; }
+  sleep 1
+done
+[ -n "$ready" ] || { echo "FAIL  postgres:17 never answered a query within 60s"; exit 1; }
+
+$PSQL < supabase/tests/local_harness.sql >/dev/null 2>&1 || { echo "FAIL  local_harness.sql"; exit 1; }
+for f in supabase/migrations/*.sql supabase/functions/*.sql supabase/views/*.sql supabase/policies/*.sql; do
+  [ -e "$f" ] || continue
+  $PSQL < "$f" >/dev/null 2>&1 || { echo "FAIL  applying $(basename "$f")"; exit 1; }
+done
+
+# Fixtures, committed on purpose: both sessions have to see the same lot and the same log.
+# One operator plays both racers — the point under test is the group row, not the role check,
+# and TC-09 ... TC-12 own that half. The dispatch leg is not under test, so the lot's state
+# and assignment are set directly, as production_test.sql does.
+$PSQL <<SQL >/dev/null 2>&1 || { echo "FAIL  fixtures"; exit 1; }
+insert into auth.users (id) values ('$OWNER'), ('$OP');
+insert into profiles (id, display_name, role, is_active) values
+  ('$OWNER', 'เจ้าของทดสอบพร้อมกัน', 'L1_OWNER', true),
+  ('$OP',    'ผู้ปฏิบัติงานทดสอบพร้อมกัน', 'L3_CM_OPERATOR', true);
+insert into locations (code, name_th, kind) values ('CH9', 'โรงรมทดสอบ', 'CHEF_HOUSE');
+insert into user_locations (profile_id, location_id) values ('$OP', (select id from locations));
+insert into suppliers (name) values ('ฟู้ดดีว่าทดสอบ');
+
+select set_config('request.jwt.claims', '{"sub":"$OWNER"}', false);
+select fn_create_po(gen_random_uuid(), (select id from suppliers), current_date - 2, 100.00, 250.00);
+select fn_add_po_delivery(gen_random_uuid(), (select id from purchase_orders), current_date - 2,
+                          100.00, (select id from locations));
+update lots set state = 'CM_RECEIVED', assigned_operator_id = '$OP';
+
+select set_config('request.jwt.claims', '{"sub":"$OP"}', false);
+select fn_upsert_smoke_daily_log(gen_random_uuid(), (select id from lots), current_date,
+  jsonb_build_array(jsonb_build_object('lot_id', (select id from lots), 'input_weight_kg', 90.00)));
+SQL
+
+# One CM 04 save of \$1 bags at 0.50 kg, holding the transaction open \$2 seconds afterwards.
+# Each call mints its OWN key: two saves, two clients, nothing shared to catch them.
+bags() {
+  cat <<SQL
+begin;
+select set_config('request.jwt.claims', '{"sub":"$OP"}', true);
+select fn_record_lot_bags(gen_random_uuid(), (select id from lots), current_date,
+                          array(select 0.50::numeric from generate_series(1, $1)));
+select pg_sleep($2);
+commit;
+SQL
+}
+
+Q() { docker exec -i "$CONTAINER" psql -U postgres -d meatshop -tAq -c "$1"; }
+
+failures=0
+note() { echo "FAIL  $1"; failures=$((failures + 1)); }
+
+# \$1 names the race; \$2 and \$3 are the bag count and the kilograms expected once both land.
+race() {
+  bags 60 2 | $PSQL > "$TMP/$1-a.log" 2>&1 &
+  pid_a=$!
+  sleep 0.5
+  bags 10 0 | $PSQL > "$TMP/$1-b.log" 2>&1 &
+  pid_b=$!
+  wait $pid_a; rc_a=$?
+  wait $pid_b; rc_b=$?
+
+  [ "$rc_a" -eq 0 ] || { note "$1: session A's save failed"; sed 's/^/      /' "$TMP/$1-a.log" | tail -5; }
+  [ "$rc_b" -eq 0 ] || { note "$1: session B's save failed"; sed 's/^/      /' "$TMP/$1-b.log" | tail -5; }
+
+  groups=$(Q "select count(*) from smoke_date_groups")
+  seqs=$(Q "select count(*) || '/' || min(seq) || '/' || max(seq) from lot_bags")
+  rollup=$(Q "select bag_count || '/' || packed_weight_kg from smoke_date_groups")
+
+  [ "$groups" = "1" ]       || note "$1: $groups smoke-date groups for one (lot, smoke_date), expected 1 (R7)"
+  [ "$seqs" = "$2/1/$2" ]   || note "$1: bags/min seq/max seq read $seqs, expected $2/1/$2 — a bag was lost or a seq reused"
+  [ "$rollup" = "$2/$3" ]   || note "$1: the group's roll-up reads $rollup, expected $2/$3 (R7a)"
+}
+
+race "new group"      70  35.00
+race "existing group" 140 70.00
+
+if [ "$failures" -eq 0 ]; then
+  echo "PASS  production_concurrency_test.sh  (140 bags in one group after two pairs of concurrent saves)"
+else
+  echo "$failures failing"
+fi
+exit "$failures"
