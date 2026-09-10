@@ -23,11 +23,30 @@
 # the key already set by a DIFFERENT key, and raises LINE_ALREADY_RECEIVED rather than
 # posting a second TRANSFER_IN.
 #
-# Mutation check, to run by hand when this file changes: delete `for update` from the SELECT
-# in fn_confirm_transport_receipt.sql and re-run. Both sessions read a null
-# receipt_idempotency_key, both pass the guard, and the FROZEN balance below reads 80.00 —
-# the unique index on receipt_idempotency_key does NOT save it, because the two keys are
-# genuinely different and both are therefore unique.
+# WHAT REMOVING THE LOCK ACTUALLY DOES, measured rather than assumed — and it is not what
+# the paragraph above would lead you to expect. Mutation-checked by deleting `for update`
+# from the SELECT in fn_confirm_transport_receipt.sql and re-running: FROZEN does **not**
+# read 80.00. It reads 40.00, every data assert below still passes, and the loser dies with
+#
+#   ERROR:  INSUFFICIENT_STOCK: balance 0.00 cannot absorb -40.00 (BR24/R3)
+#
+# because fn_post_ledger takes its own advisory lock on the tuple and refuses to take a
+# balance negative. The winner's TRANSFER_IN has already emptied IN_TRANSIT, so the loser's
+# whole transaction aborts and its UPDATE rolls back with it. The ledger was never in
+# danger. This is the same shape as the finding in fn_add_po_delivery's header one card
+# back, where a unique index on (po_id, seq) turned out to be serialising the double-book
+# by accident — a real second guard nobody had planned.
+#
+# SO WHAT THE ROW LOCK ACTUALLY BUYS IS THE REFUSAL BEING LEGIBLE, and that is the assert
+# below that flips: with it, the loser says LINE_ALREADY_RECEIVED and names the line and
+# when it was signed for; without it, a CM operator who was entitled to be told "somebody
+# else already signed for this load" gets INSUFFICIENT_STOCK about a balance they never
+# asked about. A stock-level error reaching a receiver is a support ticket. It is also the
+# difference between a refusal and a crash: with the lock the loser is turned away before
+# it touches the ledger at all.
+#
+# The unique index on receipt_idempotency_key saves nothing here, and that part of the
+# paragraph above is correct — the two keys are genuinely different, so both are unique.
 #
 # The race is made deterministic rather than raced for. Session A signs and then sits in
 # pg_sleep before committing, holding the row lock for a known window; session B arrives half
@@ -49,7 +68,17 @@ trap cleanup EXIT
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 docker run -d --name "$CONTAINER" -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=meatshop \
   postgres:17 >/dev/null || { echo "FAIL  could not start postgres:17"; exit 1; }
-until docker exec "$CONTAINER" pg_isready -U postgres -d meatshop -q 2>/dev/null; do sleep 1; done
+# A REAL QUERY, NOT pg_isready. The postgres image runs initdb, brings up a TEMPORARY
+# server on a unix socket to run its init scripts, and only then restarts the real one.
+# pg_isready answers `yes` against that temporary server, so a fast machine gets through
+# this loop and has its connection dropped by the restart a moment later — which surfaces
+# as `FAIL local_harness.sql` with no error anyone can see. `select 1` over the same path
+# psql will use is the condition that actually matters. The other three *_concurrency
+# runners and migrations_apply_test.sh still wait on pg_isready and still carry the flake.
+for _ in $(seq 1 60); do
+  docker exec "$CONTAINER" psql -U postgres -d meatshop -Atqc 'select 1' >/dev/null 2>&1 && break
+  sleep 1
+done
 
 $PSQL < supabase/tests/local_harness.sql >/dev/null 2>&1 || { echo "FAIL  local_harness.sql"; exit 1; }
 for f in supabase/migrations/*.sql supabase/functions/*.sql supabase/views/*.sql supabase/policies/*.sql; do
@@ -64,6 +93,11 @@ $PSQL <<SQL >/dev/null 2>&1 || { echo "FAIL  fixtures"; exit 1; }
 insert into auth.users (id) values ('$OWNER');
 insert into profiles (id, display_name, role, is_active)
      values ('$OWNER', 'เจ้าของทดสอบพร้อมกัน', 'L1_OWNER', true);
+-- Two locations, and both are needed. A lot is dispatched to a CHEF_HOUSE or
+-- fn_add_po_delivery refuses it by name (BR11); the transport line's DESTINATION is
+-- CENTRAL, because that is the kind fn_confirm_transport_receipt resolves to L1 and one
+-- profile then plays both racers.
+insert into locations (code, name_th, kind) values ('CH9', 'โรงรมทดสอบ', 'CHEF_HOUSE');
 insert into locations (code, name_th, kind) values ('CEN', 'คลังกลางทดสอบ', 'CENTRAL');
 insert into suppliers (name) values ('ฟู้ดดีว่าทดสอบ');
 select set_config('request.jwt.claims', '{"sub":"$OWNER"}', false);
@@ -79,7 +113,7 @@ select fn_set_config(gen_random_uuid(), 'partial_receipt_allowed', current_date 
 
 select fn_create_po(gen_random_uuid(), (select id from suppliers), current_date - 2, 100.00, 250.00);
 select fn_add_po_delivery(gen_random_uuid(), (select id from purchase_orders), current_date - 2,
-                          40.00, (select id from locations where kind = 'CENTRAL'));
+                          40.00, (select id from locations where kind = 'CHEF_HOUSE'));
 select fn_create_transport_run(gen_random_uuid(), 'FOODIVA_TO_CM', current_date - 1,
                                'รถห้องเย็น', false, 4500.00);
 select fn_dispatch_transport_line(gen_random_uuid(), (select id from transport_runs),

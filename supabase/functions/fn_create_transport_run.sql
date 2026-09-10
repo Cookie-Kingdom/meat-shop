@@ -120,7 +120,10 @@ begin
   end if;
 
   ------------------------------------------------------------------------ the R29 snapshot
-  v_text := fn_config_value('freight_alloc_method', p_event_date).value_text;
+  -- The parentheses are load-bearing: attribute notation on a bare function call is a
+  -- syntax error in PostgreSQL, and a composite-returning function has to be wrapped
+  -- before a field can be taken off it.
+  v_text := (fn_config_value('freight_alloc_method', p_event_date)).value_text;
   if v_text is null then
     raise exception 'CONFIG_WRONG_TYPE: freight_alloc_method resolved to a non-text row at %',
       p_event_date;
