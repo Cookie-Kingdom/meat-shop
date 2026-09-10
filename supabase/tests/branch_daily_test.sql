@@ -284,17 +284,23 @@ begin
   ------------------------------------------------------- the carry-forward, on branch B
   perform set_config('request.jwt.claims', json_build_object('sub', v_adm_b)::text, true);
 
-  -- Two closed days to hang rice rows off. rice_records.daily_report_id is NOT NULL, and
-  -- both must be CLOSED or daily_reports_one_open refuses the opens below.
-  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by, closed_by, closed_at)
-       values (v_brb, v_d7, now() - interval '7 days', 'CLOSED', v_adm_b, v_adm_b, now())
+  -- Two past days to hang rice rows off. rice_records.daily_report_id is NOT NULL, and
+  -- neither day may be OPEN, or daily_reports_one_open refuses the opens below.
+  --
+  -- They are inserted UNLOCKED and each is closed only once its rice row is in. ^ref-42's R8
+  -- guard (fn_guard_report_closed, migration ...0018) refuses a child row against a CLOSED
+  -- day. UNLOCKED is not OPEN, so it still coexists with the opens below.
+  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by)
+       values (v_brb, v_d7, now() - interval '7 days', 'UNLOCKED', v_adm_b)
     returning id into v_rep_b7;
-  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by, closed_by, closed_at)
-       values (v_brb, v_d2, now() - interval '2 days', 'CLOSED', v_adm_b, v_adm_b, now())
+  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by)
+       values (v_brb, v_d2, now() - interval '2 days', 'UNLOCKED', v_adm_b)
     returning id into v_rep_b2;
 
   insert into rice_records (daily_report_id, location_id, event_date, model, cooked_remaining_kg, created_by)
        values (v_rep_b7, v_brb, v_d7, 'SELF_COOK', 3.00, v_adm_b);
+  update daily_reports set status = 'CLOSED', closed_by = v_adm_b, closed_at = now()
+   where id = v_rep_b7;
 
   --------------------------------------------------------------------------------- TC-28
   -- Rice seven days back, nothing since, opening a day three days back. THE MOST RECENT
@@ -313,6 +319,8 @@ begin
   -- what makes that true — a `= p_report_date - 1` lookup would return nothing here.
   insert into rice_records (daily_report_id, location_id, event_date, model, cooked_remaining_kg, created_by)
        values (v_rep_b2, v_brb, v_d2, 'SELF_COOK', 7.00, v_adm_b);
+  update daily_reports set status = 'CLOSED', closed_by = v_adm_b, closed_at = now()
+   where id = v_rep_b2;
 
   v_res := fn_open_daily_report(gen_random_uuid(), v_brb, v_today);
   assert (v_res ->> 'carried_in_cooked_kg')::numeric = 7.00,

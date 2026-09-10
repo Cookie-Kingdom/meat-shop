@@ -173,7 +173,10 @@ begin
                            -- ^ref-25, migration ...0013: the smoke-date group's roll-up
                            -- (Finding 7's mirror of fn_rollup_smoke_log_input) and R8's lot
                            -- half, which fires on all five production child tables.
-                           'fn_rollup_smoke_group_packed', 'fn_guard_lot_closed')
+                           'fn_rollup_smoke_group_packed', 'fn_guard_lot_closed',
+                           -- ^ref-42, migration ...0018: R8's daily-report half, which fires
+                           -- on the six branch-daily child tables.
+                           'fn_guard_report_closed')
      and not has_function_privilege('authenticated', p.oid, 'EXECUTE');
   assert v_n = 0,
     format('ADR-002: %s RPC function(s) executable by nobody: %s', v_n, v_bad);

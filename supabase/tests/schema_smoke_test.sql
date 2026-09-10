@@ -49,8 +49,9 @@ begin
   assert v_sum = 0, format('R6a: expected 0 after delete, got %s', v_sum);
 
   -- R21: a meat sale line without a lot is refused.
-  insert into products (code, name_th, item_type, sale_unit)
-    values ('MEAT_BOX', 'ข้าวหมูรมควัน', 'SMOKED_MEAT', 'box') returning id into v_prod;
+  -- MEAT_BOX is seeded by migration ...0018 (^ref-42), so this reads it rather than creating
+  -- it. A second insert would be a unique violation on products.code.
+  select id into v_prod from products where code = 'MEAT_BOX';
   -- shift_started_at is NOT NULL as of migration ...0009 (^ref-38, Finding 3): a report with
   -- no shift open makes ADR-014 undecidable for that row. fn_open_daily_report always sets
   -- now(); this fixture inserts directly, so it has to say so itself.
@@ -58,17 +59,18 @@ begin
     values (v_loc, current_date, now())
     returning id into v_rep;
 
+  -- created_by is NOT NULL as of migration ...0018 (^ref-42, R32), so both inserts name it.
   v_ok := false;
   begin
-    insert into sales_lines (daily_report_id, product_id, qty, unit_price_thb)
-      values (v_rep, v_prod, 1, 350);
+    insert into sales_lines (daily_report_id, product_id, qty, unit_price_thb, created_by)
+      values (v_rep, v_prod, 1, 350, v_user);
   exception when others then
     v_ok := (sqlerrm like 'LOT_REQUIRED%');
   end;
   assert v_ok, 'R21: meat sale line without lot_id should have been refused';
 
-  insert into sales_lines (daily_report_id, product_id, lot_id, qty, unit_price_thb)
-    values (v_rep, v_prod, v_lot, 1, 350);   -- with a lot it goes through
+  insert into sales_lines (daily_report_id, product_id, lot_id, qty, unit_price_thb, created_by)
+    values (v_rep, v_prod, v_lot, 1, 350, v_user);   -- with a lot it goes through
 
   -- R1: the ledger takes inserts and nothing else.
   insert into stock_ledger (idempotency_key, item_type, lot_id, location_id, stock_state,
