@@ -30,6 +30,12 @@ export default function OwnerHome() {
       >
         OW 11 · คำขอปลดล็อก →
       </Link>
+      <Link
+        href="/owner/purchasing"
+        className="text-label text-accent hover:underline"
+      >
+        OW 01 · สั่งซื้อเนื้อ (PO) →
+      </Link>
     </div>
   );
 }
