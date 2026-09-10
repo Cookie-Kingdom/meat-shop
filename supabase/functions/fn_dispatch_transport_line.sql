@@ -48,7 +48,12 @@
 -- fn_allocate_to_branch (^ref-36), which calls this rather than posting its own ledger rows
 -- — one writer for the IN_TRANSIT tuple, or there are two implementations of Seam 1.
 --
--- Covered by supabase/tests/transport_test.sql (TC-13 ... TC-18).
+-- A BRANCH IS REACHED ONLY FROM CENTRAL (BR11, added at ^ref-37). A branch destination needs a
+-- CENTRAL_TO_BRANCH run, and that run leaves a CENTRAL location for a BRANCH. That makes the
+-- rule a property of the primitive, not just of fn_allocate_to_branch (see the guard below).
+--
+-- Covered by supabase/tests/transport_test.sql (TC-13 ... TC-18), and the branch-leg guard
+-- by movement_test.sql (TC-48 ... TC-50).
 
 create or replace function public.fn_dispatch_transport_line(
   p_idempotency_key     uuid,
@@ -133,6 +138,35 @@ begin
   if v_run.route <> 'FOODIVA_TO_CM' and p_from_location_id is null then
     raise exception 'ORIGIN_REQUIRED: a % line leaves one of our own locations and must name it',
       v_run.route;
+  end if;
+
+  -- BR11, ^ref-37's acceptance line: nothing reaches a branch without passing through central
+  -- stock first. fn_allocate_to_branch draws only from v_central_available, but THIS function
+  -- is granted to authenticated, and until ^ref-37 nothing here asked where a branch leg
+  -- starts. A CENTRAL_TO_BRANCH run could carry chef-house FROZEN stock (fn_close_lot posts it
+  -- there) straight to a branch, and a branch line could ride a CM_TO_FOODIVA run
+  -- (PLAN-movement.md Finding 11). The branch would then sign for it through fn_require_branch.
+  --
+  -- The guard runs after the retry check, so a replay of a legal line is still a replay. It
+  -- also runs after ORIGIN_LOCATION_INVALID and ORIGIN_REQUIRED, which keep their order
+  -- (transport_test.sql TC-15). Only branch-bound legs are narrowed. A FOODIVA_TO_CM or
+  -- CM_TO_FOODIVA leg into central is legitimate and tested (transport_concurrency_test.sh).
+  -- Covered by movement_test.sql TC-48 ... TC-50.
+  if v_kind = 'BRANCH' and v_run.route <> 'CENTRAL_TO_BRANCH' then
+    raise exception 'BRANCH_LEG_ROUTE_INVALID: location % is a branch, and a branch receives only on a CENTRAL_TO_BRANCH run, not on % (BR11)',
+      p_to_location_id, v_run.route;
+  end if;
+
+  if v_run.route = 'CENTRAL_TO_BRANCH' then
+    if v_kind <> 'BRANCH' then
+      raise exception 'NOT_A_BRANCH: % is a % location; a CENTRAL_TO_BRANCH line lands at a branch (BR11)',
+        p_to_location_id, v_kind;
+    end if;
+    if (select kind from locations where id = p_from_location_id) is distinct from 'CENTRAL' then
+      raise exception 'BRANCH_LEG_ORIGIN_INVALID: a CENTRAL_TO_BRANCH line leaves central stock, and % is %; nothing reaches a branch without passing through central first (BR11)',
+        p_from_location_id,
+        coalesce((select kind::text from locations where id = p_from_location_id), 'no location');
+    end if;
   end if;
 
   insert into transport_lines (run_id, lot_id, smoke_date_group_id, from_location_id,

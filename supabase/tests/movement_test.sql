@@ -6,6 +6,9 @@
 -- which is movement_concurrency_test.sh), TC-46 and TC-47 below those — TC-01/TC-02 are
 -- movement_schema_test.sql's, and TC-24 is transport_concurrency_test.sh's race, which runs the
 -- same function and the same row lock into a CENTRAL destination. ^ref-36 appends next.
+-- ^ref-37 (lane A, branch fix/dispatch-branch-leg-guard) appended TC-48 ... TC-50 at the foot:
+-- fn_dispatch_transport_line refuses a branch leg that does not leave central (BR11,
+-- PLAN-movement.md Finding 11). It assumes no contract from an unmerged lane.
 --
 -- ONE do $$ BLOCK, for production_test.sql's reason: the harness pipes each file into psql
 -- without --single-transaction, and the closing raise can only roll back the block it is in.
@@ -742,6 +745,70 @@ begin
    where smoke_date_group_id = v_gL;
   assert v_kg = 10.00 and v_kg2 = 0 and v_kg3 = 0,
     format('TC-38: lot L reads %s at branch A, %s in transit, %s at central', v_kg, v_kg2, v_kg3);
+
+  ------------------------------------------------------------------------- TC-48 ... TC-50
+  -- ^ref-37's acceptance line, below the screens (PLAN-movement.md Finding 11): nothing reaches
+  -- a branch without passing through central stock first, even through
+  -- fn_dispatch_transport_line called directly. First, 5 kg of lot A's group goes back on the
+  -- chef-house shelf, FROZEN. Each refused leg below WOULD post without the guard, so the
+  -- named raise is the only thing in its way, not an empty balance.
+  --
+  -- Baselines first. TC-43 received lot A's branch leg short, so this group need not be empty
+  -- in transit to branch A. The closing assertion compares against what was there before,
+  -- never against zero.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
+  select coalesce(sum(balance_qty) filter (where location_id = v_chef and stock_state = 'FROZEN'), 0),
+         coalesce(sum(balance_qty) filter (where location_id = v_bra and stock_state = 'IN_TRANSIT'), 0)
+    into v_a1, v_a2
+    from v_stock_balance
+   where smoke_date_group_id = v_gA;
+  perform fn_post_ledger(gen_random_uuid(), 'SMOKED_MEAT', v_chef, 'FROZEN', 'TRANSFER_IN',
+                         5.00, v_day + 11, p_lot_id => v_lotA, p_smoke_date_group_id => v_gA);
+  v_run := fn_create_transport_run(gen_random_uuid(), 'CENTRAL_TO_BRANCH', v_day + 11,
+                                   p_run_cost_thb => 0);
+
+  -- TC-48: a CENTRAL_TO_BRANCH run carrying chef-house stock straight to a branch.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_dispatch_transport_line(gen_random_uuid(), v_run, v_lotA, v_gA, v_chef, v_bra, 5.00);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'BRANCH_LEG_ORIGIN_INVALID:%';
+  end;
+  assert v_ok, format('TC-48: chef-house stock sent straight to branch A got %s',
+                      coalesce(v_err, 'no exception at all'));
+
+  -- TC-49: a branch line hung on the return run, which leaves the chef house by design.
+  select id into v_id from transport_runs where route = 'CM_TO_FOODIVA' order by created_at limit 1;
+  v_ok := false; v_err := null;
+  begin
+    perform fn_dispatch_transport_line(gen_random_uuid(), v_id, v_lotA, v_gA, v_chef, v_bra, 5.00);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'BRANCH_LEG_ROUTE_INVALID:%';
+  end;
+  assert v_ok, format('TC-49: a branch line on a CM_TO_FOODIVA run got %s',
+                      coalesce(v_err, 'no exception at all'));
+
+  -- TC-50: a CENTRAL_TO_BRANCH run used for something that is not a branch leg at all.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_dispatch_transport_line(gen_random_uuid(), v_run, v_lotA, v_gA, v_chef, v_central, 5.00);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'NOT_A_BRANCH:%';
+  end;
+  assert v_ok, format('TC-50: a CENTRAL_TO_BRANCH line into central got %s',
+                      coalesce(v_err, 'no exception at all'));
+
+  -- And nothing moved: no line on the branch run, the chef-house shelf up by exactly the 5 kg
+  -- put there, and transit to branch A where it was before.
+  select count(*) into v_n from transport_lines where run_id = v_run;
+  select coalesce(sum(balance_qty) filter (where location_id = v_chef and stock_state = 'FROZEN'), 0),
+         coalesce(sum(balance_qty) filter (where location_id = v_bra and stock_state = 'IN_TRANSIT'), 0)
+    into v_kg, v_kg2
+    from v_stock_balance
+   where smoke_date_group_id = v_gA;
+  assert v_n = 0 and v_kg = v_a1 + 5.00 and v_kg2 = v_a2,
+    format('TC-48..TC-50: %s line(s) on the branch run; chef house %s kg (was %s + 5.00); in transit to branch A %s kg (was %s)',
+           v_n, v_kg, v_a1, v_kg2, v_a2);
 
   raise exception 'MOVEMENT_TEST_PASSED';
 end $$;
