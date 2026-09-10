@@ -1,7 +1,9 @@
-import Link from "next/link";
-
+import { actionButton, control, Field } from "@/components/ui/controls";
+import { todayBangkok } from "@/lib/format/date";
+import { cn } from "@/lib/utils";
 import { submitSmokeFeeTier } from "../actions";
-import { todayBangkok, type ConfigRow } from "../types";
+import type { ConfigRow } from "../types";
+import { Sheet } from "./sheet";
 
 /* The smoke-fee band-set form — OW 10 (card ^ref-12).
  *
@@ -21,10 +23,6 @@ import { todayBangkok, type ConfigRow } from "../types";
  * path is making this one file `"use client"` with a row counter in `useState`; nothing else
  * on the screen changes.
  */
-
-const control =
-  "h-11 w-full rounded-md border border-border bg-surface px-3 text-body text-text-primary " +
-  "focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-focus-ring";
 
 const ROWS = [0, 1, 2, 3, 4, 5];
 
@@ -53,25 +51,11 @@ export function SmokeFeeTierForm({
   const bands = bandsOf(current);
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-accent bg-surface p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-h2 text-text-primary">
-            ตั้งขั้นค่ารมควันใหม่ทั้งชุด
-          </h2>
-          <p className="text-caption text-text-muted">
-            ขั้นต้องเริ่มที่ 0 กก. ต่อกันทุกช่วง และขั้นสุดท้ายต้องเปิดปลาย —
-            ระบบบันทึกทั้งชุดพร้อมกัน หรือไม่บันทึกเลย
-          </p>
-        </div>
-        <Link
-          href={closeHref}
-          className="inline-flex h-11 items-center text-label text-accent hover:underline"
-        >
-          ยกเลิก
-        </Link>
-      </div>
-
+    <Sheet
+      title="ตั้งขั้นค่ารมควันใหม่ทั้งชุด"
+      subtitle="ขั้นต้องเริ่มที่ 0 กก. ต่อกันทุกช่วง และขั้นสุดท้ายต้องเปิดปลาย — ระบบบันทึกทั้งชุดพร้อมกัน หรือไม่บันทึกเลย"
+      closeHref={closeHref}
+    >
       {bands.length > 0 ? (
         <p className="rounded-md border border-border bg-surface-sunken p-3 text-caption text-text-secondary">
           ชุดที่ใช้อยู่: {current?.value_display}
@@ -81,21 +65,20 @@ export function SmokeFeeTierForm({
       <form action={submitSmokeFeeTier} className="flex flex-col gap-4">
         <input type="hidden" name="back" value={backHref} />
 
-        <label className="flex flex-col gap-1 sm:max-w-xs">
-          <span className="text-label text-text-secondary">
-            เริ่มใช้ตั้งแต่วันที่
-          </span>
-          <input
-            type="date"
-            name="effective_from"
-            required
-            defaultValue={todayBangkok()}
-            className={control}
-          />
-          <span className="text-caption text-text-muted">
-            ชุดเดิมยังใช้กับล็อตที่ปิดไปแล้วเสมอ (BR23)
-          </span>
-        </label>
+        <div className="sm:max-w-xs">
+          <Field
+            label="เริ่มใช้ตั้งแต่วันที่"
+            hint="ชุดเดิมยังใช้กับล็อตที่ปิดไปแล้วเสมอ (BR23)"
+          >
+            <input
+              type="date"
+              name="effective_from"
+              required
+              defaultValue={todayBangkok()}
+              className={control}
+            />
+          </Field>
+        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[40rem] text-body-sm">
@@ -116,12 +99,14 @@ export function SmokeFeeTierForm({
             <tbody>
               {ROWS.map((i) => {
                 const b = bands[i];
-                const perGram =
-                  b && b.rate_basis === "PER_KG"
-                    ? String(Number(b.rate_thb) / 1000)
-                    : b
-                      ? String(b.rate_thb)
-                      : "";
+                // ADR-024: PER_KG is stored บาท/กก. and shown บาท/กรัม; FLAT is shown as stored.
+                const perGram = !b
+                  ? ""
+                  : String(
+                      b.rate_basis === "PER_KG"
+                        ? Number(b.rate_thb) / 1000
+                        : b.rate_thb,
+                    );
                 return (
                   <tr key={i}>
                     <td className="px-2 py-1">
@@ -179,13 +164,10 @@ export function SmokeFeeTierForm({
           ไม่ใช่ต่อกรัม
         </p>
 
-        <button
-          type="submit"
-          className="h-11 self-start rounded-md bg-accent px-4 text-label text-accent-fg hover:bg-accent-hover"
-        >
+        <button type="submit" className={cn(actionButton, "self-start")}>
           บันทึกทั้งชุด
         </button>
       </form>
-    </section>
+    </Sheet>
   );
 }

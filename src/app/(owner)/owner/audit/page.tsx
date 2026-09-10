@@ -1,9 +1,16 @@
 import Link from "next/link";
 
 import {
+  actionButton,
+  actionLink,
+  control,
+  Field,
+} from "@/components/ui/controls";
+import {
   AuditLogTable,
   type AuditEntry,
 } from "@/features/audit/components/audit-log-table";
+import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
 
 /* OW 11 — the audit half (card ^ref-09). Skeleton S8: title, filter bar, table,
@@ -40,16 +47,6 @@ const ROLES = [
   { value: "L2_BRANCH_ADMIN", label: "แอดมินสาขา" },
   { value: "L3_CM_OPERATOR", label: "ผู้ปฏิบัติงานเชียงใหม่" },
 ];
-
-const control =
-  "h-11 rounded-md border border-border bg-surface px-3 text-body text-text-primary " +
-  "focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-focus-ring";
-
-/** Only the first value of a repeated param, and "" for absent — one shape for the query
- *  builder and for the form's `defaultValue`. */
-function one(value: string | string[] | undefined): string {
-  return (Array.isArray(value) ? value[0] : value) ?? "";
-}
 
 export default async function AuditPage(props: PageProps<"/owner/audit">) {
   const params = await props.searchParams;
@@ -102,8 +99,7 @@ export default async function AuditPage(props: PageProps<"/owner/audit">) {
         method="get"
         className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4"
       >
-        <label className="flex flex-col gap-1">
-          <span className="text-label text-text-secondary">การกระทำ</span>
+        <Field label="การกระทำ">
           <select name="action" defaultValue={action} className={control}>
             <option value="">ทั้งหมด</option>
             {ACTIONS.map((a) => (
@@ -112,10 +108,9 @@ export default async function AuditPage(props: PageProps<"/owner/audit">) {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-label text-text-secondary">สิทธิ์ผู้แก้</span>
+        <Field label="สิทธิ์ผู้แก้">
           <select name="role" defaultValue={role} className={control}>
             <option value="">ทั้งหมด</option>
             {ROLES.map((r) => (
@@ -124,14 +119,13 @@ export default async function AuditPage(props: PageProps<"/owner/audit">) {
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
         {/* ponytail: a text input, not a select. The table list is 35 rows and growing, and
             the only cheap source for it is `select distinct table_name` over this view —
             which cannot skip the per-field expansion, so it costs a full scan per page
             load. Make it a select when something else already needs that list. */}
-        <label className="flex flex-col gap-1">
-          <span className="text-label text-text-secondary">ตาราง</span>
+        <Field label="ตาราง">
           <input
             type="text"
             name="table"
@@ -139,12 +133,9 @@ export default async function AuditPage(props: PageProps<"/owner/audit">) {
             placeholder="เช่น purchase_orders"
             className={control}
           />
-        </label>
+        </Field>
 
-        <button
-          type="submit"
-          className="h-11 rounded-md bg-accent px-4 text-label text-accent-fg hover:bg-accent-hover"
-        >
+        <button type="submit" className={actionButton}>
           กรอง
         </button>
       </form>
@@ -159,10 +150,7 @@ export default async function AuditPage(props: PageProps<"/owner/audit">) {
 
       <nav className="flex items-center justify-between gap-4">
         {page > 1 ? (
-          <Link
-            href={pageHref(page - 1)}
-            className="text-label text-accent hover:underline"
-          >
+          <Link href={pageHref(page - 1)} className={actionLink}>
             ← ก่อนหน้า
           </Link>
         ) : (
@@ -172,10 +160,7 @@ export default async function AuditPage(props: PageProps<"/owner/audit">) {
           หน้า {page}
         </span>
         {hasNext ? (
-          <Link
-            href={pageHref(page + 1)}
-            className="text-label text-accent hover:underline"
-          >
+          <Link href={pageHref(page + 1)} className={actionLink}>
             ถัดไป →
           </Link>
         ) : (

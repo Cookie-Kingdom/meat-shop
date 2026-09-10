@@ -4,8 +4,10 @@ import {
   ResponsiveTable,
   type Column,
 } from "@/components/shared/responsive-table";
+import { actionLink } from "@/components/ui/controls";
+import { thaiDate } from "@/lib/format/date";
 import { labelFor } from "../keys";
-import { itemId, thaiDate, type ConfigRow } from "../types";
+import { itemId, type ConfigRow } from "../types";
 
 /* ConfigTable — OW 10 (card ^ref-12).
  *
@@ -111,13 +113,13 @@ const COLUMNS: Column<Item>[] = [
       <span className="flex flex-wrap items-center justify-end gap-3">
         <Link
           href={`/owner/config?history=${encodeURIComponent(itemId(current))}`}
-          className="inline-flex h-11 items-center text-label text-accent hover:underline"
+          className={actionLink}
         >
           ประวัติ
         </Link>
         <Link
           href={`/owner/config?set=${encodeURIComponent(itemId(current))}`}
-          className="inline-flex h-11 items-center text-label text-accent hover:underline"
+          className={actionLink}
         >
           ตั้งค่าใหม่ตั้งแต่วันที่…
         </Link>

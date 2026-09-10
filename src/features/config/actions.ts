@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { str } from "@/lib/params";
 import {
   newIdempotencyKey,
   setConfig,
@@ -25,9 +26,6 @@ import { configKey } from "./keys";
  * to do about it. CONFIG_DUPLICATE_DATE is the one that will actually happen — the same-day
  * correction append-only has no answer for.
  */
-
-const str = (form: FormData, name: string) =>
-  (form.get(name) ?? "").toString().trim();
 
 /** Back to the screen, carrying the outcome. `err` is already Thai. */
 function finish(result: RpcResult, back: string): never {
@@ -186,7 +184,11 @@ export async function submitSmokeFeeTier(form: FormData) {
     if (mins[i] === "" && rates[i] === "") continue; // a blank row the Owner left alone
     const min = num(mins[i]);
     const perGram = num(rates[i]);
-    if (min === null || perGram === null) {
+    /* An empty max is the open-ended last band. A max that does not parse is a typo — folding
+     * it into null would silently turn this band into the open-ended one. */
+    const maxRaw = maxes[i] ?? "";
+    const max = num(maxRaw);
+    if (min === null || perGram === null || (maxRaw !== "" && max === null)) {
       finish(
         {
           ok: false,
@@ -199,7 +201,7 @@ export async function submitSmokeFeeTier(form: FormData) {
     const basis = bases[i] === "FLAT" ? "FLAT" : "PER_KG";
     tiers.push({
       min_weight_kg: min,
-      max_weight_kg: maxes[i] === "" ? null : num(maxes[i]),
+      max_weight_kg: max,
       rate_thb: basis === "PER_KG" ? perGram * 1000 : perGram,
       rate_basis: basis,
     });

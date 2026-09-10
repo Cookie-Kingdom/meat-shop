@@ -1,12 +1,14 @@
-import Link from "next/link";
-
+import { actionButton, control, Field } from "@/components/ui/controls";
+import { todayBangkok } from "@/lib/format/date";
+import { cn } from "@/lib/utils";
 import {
   submitConfigValue,
   submitFullStock,
   submitProductPrice,
 } from "../actions";
 import { CONFIG_KEYS, configKey, GROUP_LABEL } from "../keys";
-import { todayBangkok, type CatalogueRow } from "../types";
+import type { CatalogueRow } from "../types";
+import { Sheet } from "./sheet";
 
 /* The `ตั้งค่าใหม่ตั้งแต่วันที่…` sheet — OW 10 (card ^ref-12).
  *
@@ -29,30 +31,6 @@ import { todayBangkok, type CatalogueRow } from "../types";
  * `h-11` (--tap-min) and every numeric field carries `inputMode="decimal"`.
  */
 
-const control =
-  "h-11 w-full rounded-md border border-border bg-surface px-3 text-body text-text-primary " +
-  "focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-focus-ring";
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-label text-text-secondary">{label}</span>
-      {children}
-      {hint ? (
-        <span className="text-caption text-text-muted">{hint}</span>
-      ) : null}
-    </label>
-  );
-}
-
 function DateField() {
   return (
     <Field
@@ -72,44 +50,9 @@ function DateField() {
 
 function Submit() {
   return (
-    <button
-      type="submit"
-      className="h-11 rounded-md bg-accent px-4 text-label text-accent-fg hover:bg-accent-hover"
-    >
+    <button type="submit" className={actionButton}>
       บันทึกค่าใหม่
     </button>
-  );
-}
-
-function Sheet({
-  title,
-  subtitle,
-  closeHref,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  closeHref: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-4 rounded-lg border border-accent bg-surface p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-h2 text-text-primary">{title}</h2>
-          {subtitle ? (
-            <p className="text-caption text-text-muted">{subtitle}</p>
-          ) : null}
-        </div>
-        <Link
-          href={closeHref}
-          className="inline-flex h-11 items-center text-label text-accent hover:underline"
-        >
-          ยกเลิก
-        </Link>
-      </div>
-      {children}
-    </section>
   );
 }
 
@@ -178,10 +121,7 @@ export function ChooseItemSheet({
             </select>
           </Field>
         </div>
-        <button
-          type="submit"
-          className="h-11 shrink-0 rounded-md bg-accent px-4 text-label text-accent-fg hover:bg-accent-hover"
-        >
+        <button type="submit" className={cn(actionButton, "shrink-0")}>
           ต่อไป
         </button>
       </form>
@@ -342,7 +282,7 @@ export function NewValueSheet({
               name="value"
               required
               rows={5}
-              className={`${control} h-auto py-2 font-mono text-body-sm`}
+              className={cn(control, "h-auto py-2 font-mono text-body-sm")}
             />
           ) : meta.type === "date" ? (
             <input type="date" name="value" required className={control} />

@@ -3,12 +3,10 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { str } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
 
 const MIN_PASSWORD_LENGTH = 8;
-
-const field = (form: FormData, name: string) =>
-  (form.get(name) ?? "").toString().trim();
 
 /** Only same-origin relative paths, so `?next=` cannot become an open redirect. */
 function safeNext(value: string): string {
@@ -21,9 +19,9 @@ async function origin(): Promise<string> {
 }
 
 export async function signIn(form: FormData) {
-  const email = field(form, "email");
-  const password = field(form, "password");
-  const next = safeNext(field(form, "next"));
+  const email = str(form, "email");
+  const password = str(form, "password");
+  const next = safeNext(str(form, "next"));
 
   if (!email || !password) {
     redirect(`/login?error=missing_fields&next=${encodeURIComponent(next)}`);
@@ -48,7 +46,7 @@ export async function signOut() {
 }
 
 export async function requestPasswordReset(form: FormData) {
-  const email = field(form, "email");
+  const email = str(form, "email");
   if (!email) redirect("/forgot-password?error=missing_fields");
 
   const supabase = await createClient();
@@ -61,8 +59,8 @@ export async function requestPasswordReset(form: FormData) {
 }
 
 export async function updatePassword(form: FormData) {
-  const password = field(form, "password");
-  const confirm = field(form, "confirm");
+  const password = str(form, "password");
+  const confirm = str(form, "confirm");
 
   if (!password || !confirm) redirect("/update-password?error=missing_fields");
   if (password !== confirm)
