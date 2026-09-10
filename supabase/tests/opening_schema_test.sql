@@ -43,11 +43,17 @@ begin
     assert false, format('TC-01: OPENING is not a movement_type value (%s)', sqlerrm);
   end;
 
-  -- And it is the eleventh, not a replacement for one of the ten. An enum value renamed
-  -- rather than added would pass the cast above and break every row already written.
+  -- And it was ADDED, not a replacement for one of the ten. An enum value renamed rather
+  -- than added would pass the cast above and break every row already written. Asserted as
+  -- "all ten originals are still there" rather than as a count: the count was 11 until
+  -- ^ref-29's PRODUCTION (ADR-025) made it 12, and a pinned count was asserting the next
+  -- card's enum rather than this card's question.
   select count(*) into v_n from pg_enum e
-    join pg_type t on t.oid = e.enumtypid where t.typname = 'movement_type';
-  assert v_n = 11, format('TC-01: movement_type has %s values, expected 11', v_n);
+    join pg_type t on t.oid = e.enumtypid
+   where t.typname = 'movement_type'
+     and e.enumlabel in ('INTAKE', 'TRANSFER_OUT', 'TRANSFER_IN', 'THAW_OUT', 'THAW_IN',
+                         'SALE', 'WASTE', 'GIVEAWAY', 'ADJUSTMENT', 'REVERSAL');
+  assert v_n = 10, format('TC-01: %s of the ten original movement_type values survive', v_n);
 
   --------------------------------------------------------------------------------- TC-03
   -- opening_balance_close: the single-row idiom, and the key that makes a retry different
