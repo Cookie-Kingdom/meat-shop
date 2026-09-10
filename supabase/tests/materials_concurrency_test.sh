@@ -15,6 +15,15 @@
 #          insert>)`. The evening's pre-read then sees no row, writes null over the morning's
 #          10.00, and this case fails. If it still passes, the merge is not what makes it pass.
 #
+#   TC-32  fn_record_physical_count. One batch replayed on ONE key by two sessions at once (a
+#          dropped connection that retried while the first call was still running). The replay
+#          cannot see the first batch's uncommitted rows, so it passes the key pre-check. Its
+#          first insert blocks on physical_counts_batch_key and fails with unique_violation once
+#          the first batch commits; the handler returns the committed batch. Both calls must
+#          exit 0 with the same ids, and the key must hold one batch, not two.
+#          MUTATION CHECK: delete the `when unique_violation` handler. Session B then fails with
+#          a raw constraint name — a retry that reads as an error, which R4 forbids.
+#
 # The race is made deterministic rather than raced for: session A writes, then sits in pg_sleep
 # before committing; session B arrives half a second in, inside that window.
 #
@@ -103,9 +112,47 @@ rice_pair=$(Q "select coalesce(cooked_received_kg::text, 'null') || '/' || coale
 [ "$rice_rows" = "1" ] || note "TC-31: $rice_rows rice rows for one report, expected 1"
 [ "$rice_pair" = "10.00/2.00" ] || note "TC-31: the row holds [$rice_pair] (received/remaining), expected 10.00/2.00 — one visit erased the other"
 
+############################################################################### TC-32
+$PSQL -c "insert into packaging_items (code, name_th, unit) values ('MCPK', 'กล่องสกรีนทดสอบ', 'ใบ')" >/dev/null 2>&1 \
+  || { echo "FAIL  TC-32 fixtures"; exit 1; }
+PACK_ID=$(Q "select id from packaging_items where code = 'MCPK'")
+COUNT_KEY=48484848-4848-4848-4848-4848484848c2
+
+# \$1 is how long to hold the transaction open after the count. Same key, same payload.
+count_write() {
+  cat <<SQL
+begin;
+select set_config('request.jwt.claims', '{"sub":"$ADMIN"}', true);
+select fn_record_physical_count('$COUNT_KEY'::uuid, $REPORT,
+  '[{"item_type":"PACKAGING","packaging_item_id":"$PACK_ID","counted_qty":40},
+    {"item_type":"CHILLI_PASTE","counted_qty":12}]'::jsonb) ->> 'physical_count_ids' as ids;
+select pg_sleep($1);
+commit;
+SQL
+}
+
+count_write 2 | $PSQL > "$TMP/count_a.log" 2>&1 &
+pid_a=$!
+sleep 0.5
+count_write 0 | $PSQL > "$TMP/count_b.log" 2>&1 &
+pid_b=$!
+wait $pid_a; rc_a=$?
+wait $pid_b; rc_b=$?
+
+count_rows=$(Q "select count(*)::text from physical_counts where idempotency_key = '$COUNT_KEY'")
+ids_a=$(grep -o '\[.*\]' "$TMP/count_a.log" | head -1)
+ids_b=$(grep -o '\[.*\]' "$TMP/count_b.log" | head -1)
+
+[ "$rc_a" -eq 0 ] || { note "TC-32: the first count session failed"; sed 's/^/      /' "$TMP/count_a.log" | tail -5; }
+[ "$rc_b" -eq 0 ] || { note "TC-32: the concurrent replay errored — a retry is a return, not a raise (R4)"; sed 's/^/      /' "$TMP/count_b.log" | tail -5; }
+[ "$count_rows" = "2" ] || note "TC-32: the key holds $count_rows rows, expected one batch of 2"
+if [ -z "$ids_a" ] || [ "$ids_a" != "$ids_b" ]; then
+  note "TC-32: the two calls returned different batches ([$ids_a] vs [$ids_b])"
+fi
+
 ############################################################################### summary
 if [ "$failures" -eq 0 ]; then
-  echo "PASS  materials_concurrency_test.sh  (rice: one row, both visits kept)"
+  echo "PASS  materials_concurrency_test.sh  (rice: one row, both visits kept; count: one batch per key)"
 else
   echo "$failures failing"
 fi
