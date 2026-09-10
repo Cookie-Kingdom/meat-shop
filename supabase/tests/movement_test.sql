@@ -1,8 +1,10 @@
 -- Card ^ref-34 — fn_set_return_pickup_date, with what it stands on: fn_grant_central_receiver
 -- (the delegation's only writer, PLAN-movement.md Finding 2), fn_require_central_receiver (its
 -- preamble, Finding 4) and v_lot_return_pending (OW 05's read path, Finding 7). Covers TC-04 ...
--- TC-22 of TDD-movement.md; TC-03 is sweep 1f of rls_deny_all_test.sql. ^ref-35 and ^ref-36
--- append to this file.
+-- TC-22 of TDD-movement.md; TC-03 is sweep 1f of rls_deny_all_test.sql. ^ref-35 appended
+-- TC-23, TC-25, TC-26 and TC-43 ... TC-45 at the foot — TC-01/TC-02 are
+-- movement_schema_test.sql's, and TC-24 is transport_concurrency_test.sh's race, which runs the
+-- same function and the same row lock into a CENTRAL destination. ^ref-36 appends next.
 --
 -- ONE do $$ BLOCK, for production_test.sql's reason: the harness pipes each file into psql
 -- without --single-transaction, and the closing raise can only roll back the block it is in.
@@ -34,6 +36,12 @@ declare
   v_lotC    uuid;   -- still at the smoker
   v_open    uuid;   -- an opening lot: LOT_CLOSED from birth, with no close behind it
   v_gA      uuid;
+  v_gB      uuid;
+  v_line    uuid;   -- lot A's return leg, TC-18's dispatch
+  v_runB    uuid;
+  v_lineB   uuid;   -- lot B's return leg, received short at TC-26
+  v_cbr     uuid;
+  v_cline   uuid;   -- a branch leg out of central, TC-25 and TC-43
   v_ul      uuid;
   v_run     uuid;
   v_key     uuid := gen_random_uuid();
@@ -355,6 +363,143 @@ begin
   assert v_ok, format('TC-18: a reschedule after the truck got %s', coalesce(v_err, 'no exception at all'));
   select return_pickup_date into v_date from lots where id = v_lotA;
   assert v_date = v_closed + 2, format('TC-18: the refused reschedule left %s', v_date);
+
+  ------------------------------------------------------------ ^ref-35: central intake
+  -- Lot B gets a truck of its own: scheduled, booked and dispatched like lot A.
+  -- partial_receipt_allowed is TC-26's — a 25% short intake has to be recordable before its
+  -- reason can be demanded.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
+  perform fn_set_config(gen_random_uuid(), 'partial_receipt_allowed', date '2026-01-01',
+                        p_value_text => 'true');
+  perform fn_set_return_pickup_date(gen_random_uuid(), v_lotB, v_closed);
+  select id into v_gB from smoke_date_groups where lot_id = v_lotB;
+  v_runB  := fn_create_transport_run(gen_random_uuid(), 'CM_TO_FOODIVA', v_day + 5,
+                                     p_run_cost_thb => 1500.00, p_lot_ids => array[v_lotB]);
+  v_lineB := fn_dispatch_transport_line(gen_random_uuid(), v_runB, v_lotB, v_gB, v_chef,
+                                        v_central, 40.00);
+  select id into v_line from transport_lines where run_id = v_run;
+
+  ------------------------------------------------------------------------ TC-23, TC-44
+  -- The amendment opened central to the delegate, not to every L2: B's admin, undelegated, and
+  -- the operator are still refused.
+  foreach v_id in array array[v_l2b, v_l3] loop
+    perform set_config('request.jwt.claims', json_build_object('sub', v_id)::text, true);
+    v_ok := false; v_err := null;
+    begin
+      perform fn_confirm_transport_receipt(gen_random_uuid(), v_line, v_day + 6, 40.00);
+    exception when others then
+      v_err := sqlerrm; v_ok := v_err like 'FORBIDDEN:%';
+    end;
+    assert v_ok, format('TC-23: %s signing for central got %s',
+                        (select role from profiles where id = v_id), coalesce(v_err, 'no exception at all'));
+  end loop;
+
+  -- The delegate signs through the BASE function, bypassing the wrapper, and the lot advances
+  -- all the same (Seam 2). 80 bags counted against a line that carries no count asks for no
+  -- reason (TC-44): null is "not counted", and a coalesce(bag_count, 0) reads 80 against zero.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_l2a)::text, true);
+  v_id := fn_confirm_transport_receipt(gen_random_uuid(), v_line, v_day + 6, 40.00,
+                                       p_received_bag_count => 80);
+  assert v_id = v_line, format('TC-23: the receipt returned %s', v_id);
+  select state::text into v_txt from lots where id = v_lotA;
+  assert v_txt = 'CENTRAL_STOCK', format('TC-23: lot A reads %s after its return leg landed', v_txt);
+  select received_by, received_bag_count into v_id, v_n from transport_lines where id = v_line;
+  assert v_id = v_l2a and v_n = 80,
+    format('TC-23/TC-44: the line was received by %s with %s bag(s)', v_id, v_n);
+  select coalesce(sum(qty_delta), 0) into v_kg from stock_ledger
+   where lot_id = v_lotA and location_id = v_central and stock_state = 'FROZEN';
+  assert v_kg = 40.00, format('TC-23: central holds %s kg of lot A, expected 40.00', v_kg);
+
+  --------------------------------------------------------------------------------- TC-26
+  -- Through the wrapper, 30 of 40 with no reason: 25% past a 20% tolerance, refused by the base
+  -- function's own rule, and nothing written.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_confirm_central_intake(gen_random_uuid(), v_lineB, v_day + 6, 30.00);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'VARIANCE_REASON_REQUIRED:%kg%';
+  end;
+  assert v_ok, format('TC-26: a 25%% short intake with no reason got %s', coalesce(v_err, 'no exception at all'));
+  select count(*) into v_n from transport_lines where id = v_lineB and receipt_idempotency_key is null;
+  select state::text into v_txt from lots where id = v_lotB;
+  assert v_n = 1 and v_txt = 'RETURN_SCHEDULED',
+    format('TC-26: the refused intake left %s unsigned line(s) and lot B at %s', v_n, v_txt);
+
+  -- ALERT, not BLOCK: with a reason the same 30 kg is accepted, and 10 stays on the truck.
+  v_id := fn_confirm_central_intake(gen_random_uuid(), v_lineB, v_day + 6, 30.00,
+                                    'ถุงแตกระหว่างทาง');
+  assert v_id = v_lineB, format('TC-26: the intake returned %s', v_id);
+  select state::text into v_txt from lots where id = v_lotB;
+  assert v_txt = 'CENTRAL_STOCK', format('TC-26: lot B reads %s after a partial intake', v_txt);
+  select coalesce(sum(qty_delta), 0) into v_kg from stock_ledger
+   where lot_id = v_lotB and location_id = v_central and stock_state = 'IN_TRANSIT';
+  assert v_kg = 10.00, format('TC-26: %s kg of lot B is still on the truck, expected 10.00', v_kg);
+
+  --------------------------------------------------------------------------------- TC-25
+  -- A branch leg's id typed into OW 06 fails by name, and nothing is signed. The leg is
+  -- dispatched directly and its bag count set directly: fn_allocate_to_branch, the only writer
+  -- of both, is ^ref-36's.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
+  v_cbr   := fn_create_transport_run(gen_random_uuid(), 'CENTRAL_TO_BRANCH', v_day + 7);
+  v_cline := fn_dispatch_transport_line(gen_random_uuid(), v_cbr, v_lotA, v_gA, v_central,
+                                        v_bra, 20.00);
+  update transport_lines set bag_count = 10 where id = v_cline;
+
+  -- The preamble runs before the line is read: an undelegated caller learns nothing about
+  -- which route a line id belongs to.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_l2b)::text, true);
+  v_ok := false; v_err := null;
+  begin
+    perform fn_confirm_central_intake(gen_random_uuid(), v_cline, v_day + 8, 20.00);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'FORBIDDEN:%';
+  end;
+  assert v_ok, format('TC-25: an undelegated L2 at OW 06 got %s', coalesce(v_err, 'no exception at all'));
+
+  perform set_config('request.jwt.claims', json_build_object('sub', v_l2a)::text, true);
+  v_ok := false; v_err := null;
+  begin
+    perform fn_confirm_central_intake(gen_random_uuid(), v_cline, v_day + 8, 20.00);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'NOT_A_CENTRAL_INTAKE:%CENTRAL_TO_BRANCH%';
+  end;
+  assert v_ok, format('TC-25: a branch leg through OW 06 got %s', coalesce(v_err, 'no exception at all'));
+
+  ------------------------------------------------------------------------ TC-43, TC-45
+  -- Ten bags out, nine counted in at 19.50 kg: 2.5% off by weight, inside the 20% tolerance,
+  -- and still a reason — the bag is somewhere (Seam 7). A's admin signs at their own branch.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_confirm_transport_receipt(gen_random_uuid(), v_cline, v_day + 8, 19.50,
+                                         p_received_bag_count => 0);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'RECEIPT_BAG_COUNT_INVALID:%';
+  end;
+  assert v_ok, format('TC-43: zero bags counted got %s', coalesce(v_err, 'no exception at all'));
+
+  v_ok := false; v_err := null;
+  begin
+    perform fn_confirm_transport_receipt(gen_random_uuid(), v_cline, v_day + 8, 19.50,
+                                         p_received_bag_count => 9);
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'VARIANCE_REASON_REQUIRED:%bag%';
+  end;
+  assert v_ok, format('TC-43: nine bags against ten with no reason got %s', coalesce(v_err, 'no exception at all'));
+  select count(*) into v_n from transport_lines where id = v_cline and receipt_idempotency_key is null;
+  assert v_n = 1, 'TC-25/TC-43: a refused call signed the branch leg';
+
+  perform fn_confirm_transport_receipt(gen_random_uuid(), v_cline, v_day + 8, 19.50,
+                                       'ถุงหายหนึ่งถุง', p_received_bag_count => 9);
+  select bag_count, received_bag_count into v_n, v_n2 from transport_lines where id = v_cline;
+  assert v_n = 10 and v_n2 = 9, format('TC-45: the line stores %s bag(s) out and %s in', v_n, v_n2);
+  select coalesce(sum(qty_delta), 0) into v_kg from stock_ledger
+   where lot_id = v_lotA and location_id = v_bra and stock_state = 'FROZEN';
+  assert v_kg = 19.50, format('TC-45: branch A holds %s kg of lot A, expected the 19.50 weighed', v_kg);
+  select count(*) into v_n from stock_ledger
+   where lot_id = v_lotA and location_id = v_bra and abs(qty_delta) in (9, 10);
+  assert v_n = 0, format('TC-45: %s ledger row(s) at the branch carry a bag count as a quantity', v_n);
+  select state::text into v_txt from lots where id = v_lotA;
+  assert v_txt = 'CENTRAL_STOCK', format('TC-45: a branch receipt moved lot A to %s', v_txt);
 
   raise exception 'MOVEMENT_TEST_PASSED';
 end $$;
