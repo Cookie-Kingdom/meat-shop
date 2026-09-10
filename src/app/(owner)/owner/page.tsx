@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { UnsetMarker } from "@/features/setup/components/unset-marker";
+
 /* ponytail: placeholder. It proves the group renders for its role and 403s for every
  * other one. The real OW 01–11 screens arrive with the cards that own their data.
  *
@@ -17,6 +19,9 @@ export default function OwnerHome() {
         className="text-label text-accent hover:underline"
       >
         OW 10 · ตั้งค่าระบบ →
+      </Link>
+      <Link href="/owner/setup" className="text-label text-accent hover:underline">
+        ตั้งค่าเริ่มต้น → <UnsetMarker />
       </Link>
       <Link
         href="/owner/audit"

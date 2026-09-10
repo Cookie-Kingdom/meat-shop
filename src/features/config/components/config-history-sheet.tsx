@@ -63,7 +63,9 @@ export function ConfigHistorySheet({
               </span>
             ) : null}
             <span className="text-caption text-text-muted">
-              โดย {row.created_by_name ?? "—"}
+              โดย{" "}
+              {row.created_by_name ??
+                (row.created_by === null ? "ค่าตั้งต้นตามข้อกำหนด (v0.2)" : "—")}
             </span>
             {row.note ? (
               <span className="w-full text-caption text-text-secondary">
