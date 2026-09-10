@@ -160,7 +160,11 @@ begin
                            'fn_post_ledger', 'fn_require_owner', 'fn_require_branch',
                            'fn_audit_row', 'fn_audit_log_append_only',
                            'fn_rollup_smoke_log_input', 'fn_require_lot_for_meat',
-                           'fn_stock_ledger_append_only', 'fn_stock_ledger_opening_closed')
+                           'fn_stock_ledger_append_only', 'fn_stock_ledger_opening_closed',
+                           -- ^ref-25, migration ...0013: the smoke-date group's roll-up
+                           -- (Finding 7's mirror of fn_rollup_smoke_log_input) and R8's lot
+                           -- half, which fires on all five production child tables.
+                           'fn_rollup_smoke_group_packed', 'fn_guard_lot_closed')
      and not has_function_privilege('authenticated', p.oid, 'EXECUTE');
   assert v_n = 0,
     format('ADR-002: %s RPC function(s) executable by nobody: %s', v_n, v_bad);
