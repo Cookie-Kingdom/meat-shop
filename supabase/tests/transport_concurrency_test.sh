@@ -98,8 +98,8 @@ insert into profiles (id, display_name, role, is_active)
      values ('$OWNER', 'เจ้าของทดสอบพร้อมกัน', 'L1_OWNER', true);
 -- Two locations, and both are needed. A lot is dispatched to a CHEF_HOUSE or
 -- fn_add_po_delivery refuses it by name (BR11); the transport line's DESTINATION is
--- CENTRAL, because that is the kind fn_confirm_transport_receipt resolves to L1 and one
--- profile then plays both racers.
+-- CENTRAL, because that is the kind fn_confirm_transport_receipt resolves to L1 (or, since
+-- ^ref-35, a can_receive_central delegate) and one profile then plays both racers.
 insert into locations (code, name_th, kind) values ('CH9', 'โรงรมทดสอบ', 'CHEF_HOUSE');
 insert into locations (code, name_th, kind) values ('CEN', 'คลังกลางทดสอบ', 'CENTRAL');
 insert into suppliers (name) values ('ฟู้ดดีว่าทดสอบ');

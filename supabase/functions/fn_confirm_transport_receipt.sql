@@ -39,7 +39,23 @@
 --
 -- ROLE COMES FROM THE DESTINATION, NOT FROM AN ARGUMENT. A caller who names their own role
 -- picks it. CHEF_HOUSE is L3 and must be assigned to that location; BRANCH goes through
--- fn_require_branch, so an L2 of one branch cannot sign for another's; CENTRAL is L1.
+-- fn_require_branch, so an L2 of one branch cannot sign for another's; CENTRAL is L1 or a
+-- can_receive_central delegate through fn_require_central_receiver (^ref-35, R27, BR12). It
+-- was L1-only at ^ref-22; the delegate signs for central and gains no read scope with it.
+--
+-- TWO MEASURED DIMENSIONS, ONE REASON (^ref-35, v0.2:89). BR 02 receives "น้ำหนักจริง
+-- จำนวนถุง และเหตุผลเมื่อไม่ตรง": a bag-count mismatch demands the same reason a weight past
+-- threshold does. Ten bags out, nine in at 19.5 kg is 2.5% off by weight and sails through a
+-- weight-only check — and a whole bag is never cut (v0.2:108), so a bag short is a bag
+-- somewhere else. Null on either side is NOT COUNTED, never zero bags: no FOODIVA_TO_CM or
+-- CM_TO_FOODIVA line carries a count, and a coalesce(..., 0) would demand a reason for every
+-- return leg a receiver counted (TC-44). Still ALERT: the count is stored, the stock stays kg.
+--
+-- THE RETURN LEG'S LOT TRANSITION LIVES HERE (^ref-35, Finding 3, Seam 2): a CM_TO_FOODIVA
+-- line received into CENTRAL moves its lot RETURN_SCHEDULED -> CENTRAL_STOCK.
+-- fn_dispatch_transport_line leaves it to the receipt, and it is not in
+-- fn_confirm_central_intake because both functions are granted to authenticated — an L1
+-- calling this one directly would otherwise receive the meat and leave the lot behind.
 --
 -- THE SECOND KEY. A line is written twice by two different callers, so it carries two keys
 -- (migration ...0010). The receipt's own key lands in receipt_idempotency_key under
@@ -47,15 +63,23 @@
 -- and one named refusal rather than two TRANSFER_IN rows (TC-41).
 --
 -- Covered by supabase/tests/transport_test.sql (TC-19 ... TC-28) and, for TC-41,
--- supabase/tests/transport_concurrency_test.sh.
+-- supabase/tests/transport_concurrency_test.sh; the ^ref-35 half by movement_test.sql (TC-23,
+-- TC-43 ... TC-45).
+
+-- ^ref-35 appended p_received_bag_count. `create or replace` with a longer argument list makes
+-- a SECOND function beside the old one, and every six-argument call is then ambiguous between
+-- them — so the old signature is dropped by name first. Re-appliable: the second time round
+-- there is nothing to drop.
+drop function if exists public.fn_confirm_transport_receipt(uuid, uuid, date, numeric, text, text);
 
 create or replace function public.fn_confirm_transport_receipt(
   p_idempotency_key     uuid,
   p_line_id             uuid,
   p_event_date          date,
   p_received_weight_kg  numeric,
-  p_variance_reason     text default null,
-  p_variance_settlement text default null
+  p_variance_reason     text    default null,
+  p_variance_settlement text    default null,
+  p_received_bag_count  integer default null
 ) returns uuid
   language plpgsql
   security definer
@@ -65,6 +89,8 @@ declare
   v_actor     uuid;
   v_line      transport_lines;
   v_kind      location_kind;
+  v_route     transport_route;
+  v_bags_off  boolean;
   v_threshold numeric;
   v_pct       numeric;
   v_verdict   text;
@@ -83,6 +109,11 @@ begin
   if p_received_weight_kg is null or p_received_weight_kg < 0 then
     raise exception 'RECEIPT_WEIGHT_INVALID: received_weight_kg must be >= 0, got %',
       p_received_weight_kg;
+  end if;
+
+  if p_received_bag_count < 1 then
+    raise exception 'RECEIPT_BAG_COUNT_INVALID: received_bag_count is a count of bags that arrived, got %',
+      p_received_bag_count;
   end if;
 
   -- Locked before the retry is even asked, unlike the dispatch. A dispatch replay competes
@@ -112,7 +143,7 @@ begin
   if v_kind = 'BRANCH' then
     v_actor := fn_require_branch(v_line.to_location_id);
   elsif v_kind = 'CENTRAL' then
-    v_actor := fn_require_owner();
+    v_actor := fn_require_central_receiver();
   else
     -- CHEF_HOUSE. Actor first, for fn_require_owner's reason: fn_current_role() folds in
     -- is_active and goes null for a deactivated operator holding a live token, who would
@@ -144,11 +175,18 @@ begin
     into v_pct, v_verdict
     from fn_check_variance(p_received_weight_kg, v_line.dispatched_weight_kg, 'ALERT', v_threshold);
 
-  if v_verdict <> 'WITHIN' then
+  -- Null on either side is "not counted", so the comparison is null and reads as agreement.
+  v_bags_off := coalesce(p_received_bag_count <> v_line.bag_count, false);
+
+  if v_verdict <> 'WITHIN' or v_bags_off then
     v_needs := fn_config_boolean('receipt_variance_requires_reason', p_event_date);
     if v_needs and coalesce(btrim(p_variance_reason), '') = '' then
-      raise exception 'VARIANCE_REASON_REQUIRED: % kg against % kg dispatched is %%% off, past a tolerance of %%% (UAT-11, BR12)',
-        p_received_weight_kg, v_line.dispatched_weight_kg, coalesce(v_pct::text, 'an unmeasurable'), v_threshold;
+      if v_verdict <> 'WITHIN' then
+        raise exception 'VARIANCE_REASON_REQUIRED: % kg against % kg dispatched is %%% off, past a tolerance of %%% (UAT-11, BR12)',
+          p_received_weight_kg, v_line.dispatched_weight_kg, coalesce(v_pct::text, 'an unmeasurable'), v_threshold;
+      end if;
+      raise exception 'VARIANCE_REASON_REQUIRED: % bag(s) counted against % loaded; a whole bag is never cut, so the difference is somewhere else (BR 02, v0.2:89)',
+        p_received_bag_count, v_line.bag_count;
     end if;
   end if;
 
@@ -158,6 +196,7 @@ begin
          received_at             = now(),
          variance_reason         = p_variance_reason,
          variance_settlement     = p_variance_settlement,
+         received_bag_count      = p_received_bag_count,
          receipt_idempotency_key = p_idempotency_key
    where id = p_line_id;
 
@@ -229,8 +268,19 @@ begin
                                         'over-delivery against the dispatch note'));
   end if;
 
+  -- The return leg's lot transition (header). On the first receipt of any line on the run that
+  -- brought meat, partial or not: the lot IS at central, and how much of it is still on the
+  -- truck is v_outstanding_receipts' question and the ledger's answer (ADR-026). A receipt of
+  -- nothing leaves it where it was — none of it is central stock. Later lines of the same lot
+  -- find it already moved and change nothing.
+  select route into v_route from transport_runs where id = v_line.run_id;
+  if v_route = 'CM_TO_FOODIVA' and v_kind = 'CENTRAL' and p_received_weight_kg > 0 then
+    update lots set state = 'CENTRAL_STOCK'
+     where id = v_line.lot_id and state = 'RETURN_SCHEDULED';
+  end if;
+
   return v_line.id;
 end $$;
 
-revoke execute on function public.fn_confirm_transport_receipt(uuid, uuid, date, numeric, text, text) from public, anon, authenticated;
-grant  execute on function public.fn_confirm_transport_receipt(uuid, uuid, date, numeric, text, text) to authenticated;
+revoke execute on function public.fn_confirm_transport_receipt(uuid, uuid, date, numeric, text, text, integer) from public, anon, authenticated;
+grant  execute on function public.fn_confirm_transport_receipt(uuid, uuid, date, numeric, text, text, integer) to authenticated;

@@ -40,8 +40,9 @@
 -- this and it has to run the whole function twice, not just the insert.
 --
 -- lot_state advances to IN_TRANSIT on the outbound leg only. On CM_TO_FOODIVA the
--- transition belongs to fn_confirm_central_intake (^ref-35): setting it here would make the
--- lot read as received before the truck had arrived.
+-- transition belongs to the receipt — fn_confirm_transport_receipt, since ^ref-35, and not its
+-- fn_confirm_central_intake wrapper: setting it here would make the lot read as received
+-- before the truck had arrived.
 --
 -- L1 per API_DATA_MODEL.md's RPC table. CENTRAL_TO_BRANCH lines are created by
 -- fn_allocate_to_branch (^ref-36), which calls this rather than posting its own ledger rows
