@@ -54,7 +54,12 @@
 -- STATE ADVANCES TO CM_RECEIVED AND NO FURTHER. SMOKING is the first daily log's transition
 -- (^ref-27) — the meat being on the premises is not the meat being in the smoker.
 --
--- Covered by supabase/tests/production_test.sql (TC-13 ... TC-18).
+-- THE STATE GUARD IS A FLOOR (^fix-receipt-state-floor). It refuses only a lot that has not
+-- left Foodiva, or an opening lot. A closed lot is refused by fn_guard_lot_closed, which lets
+-- an approved, unexpired unlock through (R8/R42). See the comment above the guard.
+--
+-- Covered by supabase/tests/production_test.sql (TC-13 ... TC-18) and
+-- supabase/tests/receipt_state_floor_test.sql (RSF-01 ... RSF-09).
 
 create or replace function public.fn_record_lot_receipt(
   p_idempotency_key      uuid,
@@ -104,14 +109,23 @@ begin
   -- and the row is what they compete for. Same shape as ^ref-22's receipt.
   select * into v_lot from lots where id = p_lot_id for update;
 
-  -- The lifecycle, not just the closed guard. ...0013's fn_guard_lot_closed stops a write
-  -- against a closed lot (R8); it says nothing about a lot that never left Foodiva. A
-  -- receipt against PO_CREATED is a receipt for meat still on somebody else's floor, and one
-  -- against SMOKING is a measurement taken after the fact — both are data-entry errors with
-  -- no other guard in front of them.
-  if v_lot.state not in ('IN_TRANSIT', 'CM_RECEIVED') then
-    raise exception 'LOT_STATE_INVALID: lot % is at %, and a receipt is signed at IN_TRANSIT or CM_RECEIVED',
-      v_lot.lot_code, v_lot.state;
+  -- A FLOOR, NOT A RANGE (^fix-receipt-state-floor). The lower end is this function's job: a
+  -- receipt against PO_CREATED is a receipt for meat still on Foodiva's floor, and nothing
+  -- else refuses it. The UPPER end belongs to ...0013's fn_guard_lot_closed (R8). At
+  -- LOT_CLOSED or beyond, it refuses the write unless an approved, unexpired unlock_request
+  -- exists (R42). The old `not in ('IN_TRANSIT','CM_RECEIVED')` refused that correction
+  -- before the trigger ever ran, so for this table the unlock path could never do anything.
+  --
+  -- The floor is IN_TRANSIT, not the CM_RECEIVED that ^ref-27 uses, because a receipt is
+  -- signed while the lot is still IN_TRANSIT (TC-13). A correction at SMOKING is therefore
+  -- accepted now. R8 guards closed lots only.
+  --
+  -- An opening lot keeps its refusal. It sits at LOT_CLOSED, the trigger exempts it
+  -- (ADR-021), and it has no dispatch weight to receive against. The old `not in` refused
+  -- it, and a bare floor would not.
+  if v_lot.state < 'IN_TRANSIT' or v_lot.is_opening then
+    raise exception 'LOT_STATE_INVALID: lot % is at % (opening: %) — a receipt is signed from IN_TRANSIT on, and never against an opening lot',
+      v_lot.lot_code, v_lot.state, v_lot.is_opening;
   end if;
 
   select * into v_receipt from lot_receipts where lot_id = p_lot_id for update;
