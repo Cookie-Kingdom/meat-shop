@@ -13,6 +13,18 @@ export default function OwnerHome() {
         OW 01–11 — ยังไม่มีหน้าจอใช้งานจริงครบทุกหน้า
       </p>
       <Link
+        href="/owner/lots"
+        className="text-label text-accent hover:underline"
+      >
+        OW 03 · ติดตามล็อต →
+      </Link>
+      <Link
+        href="/owner/lots/results"
+        className="text-label text-accent hover:underline"
+      >
+        OW 04 · ผลล็อตและต้นทุน →
+      </Link>
+      <Link
         href="/owner/config"
         className="text-label text-accent hover:underline"
       >

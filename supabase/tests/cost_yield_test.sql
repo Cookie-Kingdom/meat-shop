@@ -1,4 +1,5 @@
--- Cards ^ref-31 (v_lot_yield) — TC-01 ... TC-08 of v.0.1/ref-31-33-cost/TDD-cost.md.
+-- Cards ^ref-31 (v_lot_yield) — TC-01 ... TC-08 of v.0.1/ref-31-33-cost/TDD-cost.md — and
+-- ^ref-33 (v_lot_daily_yield) — TC-09, appended at the foot.
 -- Contract assumed from an unmerged lane: none (every function called is on develop at 9362eca).
 --
 -- ONE do $$ BLOCK, for lot_close_test.sql's reason: the harness pipes each file into psql
@@ -235,6 +236,64 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', v_l2)::text, true);
   select count(*) into v_n from v_lot_yield;
   assert v_n = 0, format('TC-05: an L2 reads %s v_lot_yield row(s)', v_n);
+
+  reset role;
+
+  --------------------------------------------------------------------------------- TC-09
+  -- ^ref-33: v_lot_daily_yield, OW 03's per-day trend. Its figure has its own name and its own
+  -- base — the day's input — so it is neither smoke_yield_pct nor loss (ADR-011, R17).
+  select * into v_row from v_lot_daily_yield where lot_id = v_lotP and event_date = v_day;
+  assert v_row.input_weight_kg = 50.00 and v_row.packed_weight_kg = 40.00
+     and v_row.bag_count = 80 and v_row.day_yield_pct = 80.00,
+    format('TC-09: P day 1 reads %s in, %s packed in %s bags, %s%% — expected 50.00, 40.00, 80, 80.00',
+           v_row.input_weight_kg, v_row.packed_weight_kg, v_row.bag_count, v_row.day_yield_pct);
+
+  select * into v_row from v_lot_daily_yield where lot_id = v_lotP and event_date = v_day + 1;
+  assert v_row.input_weight_kg = 46.50 and v_row.packed_weight_kg = 35.00
+     and v_row.day_yield_pct = 75.27,
+    format('TC-09: P day 2 reads %s in, %s packed, %s%% — expected 46.50, 35.00, 75.27',
+           v_row.input_weight_kg, v_row.packed_weight_kg, v_row.day_yield_pct);
+
+  -- S logged a day and packed nothing yet: "not packed yet", never 0%.
+  select * into v_row from v_lot_daily_yield where lot_id = v_lotS and event_date = v_day;
+  assert v_row.smoke_daily_log_id is not null
+     and v_row.packed_weight_kg is null and v_row.day_yield_pct is null,
+    format('TC-09: S''s unpacked day reads log %s, packed %s, %s%% — expected a row with nulls',
+           v_row.smoke_daily_log_id, v_row.packed_weight_kg, v_row.day_yield_pct);
+
+  select string_agg(column_name::text, ', '), count(*) into v_txt, v_n
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'v_lot_daily_yield'
+     and (column_name like '%loss%' or column_name = 'smoke_yield_pct'
+       or column_name like '%\_thb' or column_name like '%price%' or column_name like '%cost%');
+  assert v_n = 0, format('TC-09: v_lot_daily_yield carries %s forbidden column(s): %s', v_n, v_txt);
+
+  select count(*) into v_n
+    from information_schema.role_table_grants
+   where table_schema = 'public' and table_name = 'v_lot_daily_yield'
+     and grantee in ('anon', 'authenticated');
+  assert v_n = 1, format('TC-09: v_lot_daily_yield holds %s session-role grant(s), not 1', v_n);
+
+  select count(*) into v_n
+    from information_schema.role_table_grants
+   where table_schema = 'public' and table_name = 'v_lot_daily_yield'
+     and grantee = 'authenticated' and privilege_type = 'SELECT';
+  assert v_n = 1, 'TC-09: v_lot_daily_yield is not readable by authenticated';
+
+  -- R20: yield-bearing, so the operator who logged these days reads none of them.
+  set local role authenticated;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
+  select count(*) into v_n from v_lot_daily_yield;
+  assert v_n >= 6, format('TC-09: L1 reads %s of the 6 logged day(s) as authenticated', v_n);
+
+  perform set_config('request.jwt.claims', json_build_object('sub', v_l3)::text, true);
+  select count(*) into v_n from v_lot_daily_yield;
+  assert v_n = 0, format('TC-09: the assigned L3 reads %s v_lot_daily_yield row(s)', v_n);
+
+  perform set_config('request.jwt.claims', json_build_object('sub', v_l2)::text, true);
+  select count(*) into v_n from v_lot_daily_yield;
+  assert v_n = 0, format('TC-09: an L2 reads %s v_lot_daily_yield row(s)', v_n);
 
   reset role;
 
