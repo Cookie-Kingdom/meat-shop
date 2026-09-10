@@ -1,6 +1,9 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { toResult as toResultWith, type RpcResult } from "./result";
+
+export type { RpcResult } from "./result";
 
 /* Typed wrappers over the four config setters (card ^ref-12, functions from ^ref-11).
  *
@@ -54,15 +57,10 @@ const MESSAGES: Record<string, string> = {
   NO_ACTOR: "บัญชีนี้ถูกปิดใช้งานแล้ว",
 };
 
-export type RpcResult =
-  { ok: true } | { ok: false; code: string; message: string };
-
-/** Postgres reports our raises as `CODE: detail`. Split the code off so the screen can show
- * the Thai sentence for the ones we named, and the raw message for the ones we did not. */
+/** The `CODE:` split lives in `./result` since ^ref-41; this binds it to the setters' messages.
+ * Same behaviour as before the move. */
 function toResult(error: { message: string } | null): RpcResult {
-  if (!error) return { ok: true };
-  const code = error.message.match(/^([A-Z_]+):/)?.[1] ?? "";
-  return { ok: false, code, message: MESSAGES[code] ?? error.message };
+  return toResultWith(error, MESSAGES);
 }
 
 export async function setConfig(args: {

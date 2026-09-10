@@ -22,6 +22,9 @@
 --
 -- Covered by supabase/tests/transport_test.sql (TC-39) and transport_schema_test.sql
 -- (TC-38).
+--
+-- ^ref-41 appended bag_count and smoke_date, last, for BR 02 (v0.2:89) — branch_screens_test.sql
+-- TC-38. Nothing else in the view moved.
 
 create or replace view public.v_outstanding_receipts as
 select
@@ -41,10 +44,17 @@ select
   -- The generated column is null in that case too, by the same arithmetic.
   coalesce(tl.outstanding_weight_kg, tl.dispatched_weight_kg) as outstanding_weight_kg,
   tl.created_at            as dispatched_at,
-  (current_date - tl.created_at::date)                        as age_days
+  (current_date - tl.created_at::date)                        as age_days,
+  -- ^ref-41 appended these two, at the end so `create or replace` keeps every existing column
+  -- in place (TC-38/TC-39 of transport_test.sql). BR 02 receives "Lot กลุ่มวันรมควัน น้ำหนักจริง
+  -- จำนวนถุง" against what was loaded (v0.2:89), so the screen shows the bags loaded (…0016)
+  -- and the smoke date. Null bag_count means not counted, never zero bags.
+  tl.bag_count,
+  g.smoke_date
 from transport_lines tl
 join transport_runs tr on tr.id = tl.run_id
 join lots l            on l.id  = tl.lot_id
+left join smoke_date_groups g on g.id = tl.smoke_date_group_id
 where (tl.received_weight_kg is null or tl.outstanding_weight_kg > 0)
   and (fn_current_role() = 'L1_OWNER'
     or (fn_current_role() = 'L2_BRANCH_ADMIN'
