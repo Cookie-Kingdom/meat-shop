@@ -27,7 +27,8 @@
 --
 -- L2 ONLY, fn_require_branch (v0.2:59: the Owner has ดูต้นทุนทั้งหมด, view). No CLOSED check:
 -- lane C's fn_guard_report_closed (...0018) raises REPORT_CLOSED on the insert. R28's window is
--- checked, after the replay (Finding 12).
+-- checked, after the replay (Finding 12), and skipped for an UNLOCKED report, whose approved
+-- unlock is the escalation for an old day (Finding 4 amended, v0.2:401).
 --
 -- Covered by supabase/tests/materials_expense_test.sql (TC-74 ... TC-86).
 
@@ -66,9 +67,14 @@ begin
   end if;
 
   ------------------------------------------------------------------------ the window (R28)
-  if not fn_backdating_allowed(v_report.report_date) then
-    raise exception 'BACKDATE_NOT_ALLOWED: % is outside the back-dating window — an expense that old goes through the unlock path (R28)',
-      v_report.report_date;
+  -- An UNLOCKED day skips it: the approved unlock IS the escalation for an old day (v0.2:401
+  -- D07; the coordinator's rule, shared with lanes B and C). Nested, so fn_backdating_allowed is
+  -- not even asked about an unlocked day. Not a CLOSED check; lane C's trigger owns that.
+  if v_report.status is distinct from 'UNLOCKED' then
+    if not fn_backdating_allowed(v_report.report_date) then
+      raise exception 'BACKDATE_NOT_ALLOWED: % is outside the back-dating window — an expense that old goes through the unlock path (R28)',
+        v_report.report_date;
+    end if;
   end if;
 
   --------------------------------------------------------------------------- the arguments
