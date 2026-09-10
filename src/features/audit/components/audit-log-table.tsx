@@ -4,6 +4,7 @@ import {
   ResponsiveTable,
   type Column,
 } from "@/components/shared/responsive-table";
+import { thaiDateTime } from "@/lib/format/date";
 
 /* AuditLogTable — OW 11, the audit half (card ^ref-09).
  *
@@ -34,15 +35,6 @@ export type AuditEntry = {
   new_value: string | null;
   reason: string | null;
 };
-
-/* ADR-010 — stored timestamptz, read in Asia/Bangkok. The business runs in one timezone
- * and the audit trail is the one screen where "which clock" is the question being asked,
- * so the zone is pinned here rather than left to the viewer's browser. */
-const BANGKOK = new Intl.DateTimeFormat("th-TH", {
-  timeZone: "Asia/Bangkok",
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 const ACTION_LABEL: Record<string, string> = {
   INSERT: "สร้าง",
@@ -122,7 +114,7 @@ const COLUMNS: Column<AuditEntry>[] = [
     header: "เวลา",
     numeric: true,
     className: "whitespace-nowrap text-text-secondary",
-    cell: (e) => BANGKOK.format(new Date(e.changed_at)),
+    cell: (e) => thaiDateTime(e.changed_at),
   },
   {
     id: "field",

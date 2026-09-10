@@ -1,6 +1,12 @@
 import Link from "next/link";
 
 import {
+  actionButton,
+  actionLink,
+  control,
+  Field,
+} from "@/components/ui/controls";
+import {
   ConfigTable,
   type Item,
 } from "@/features/config/components/config-table";
@@ -10,17 +16,13 @@ import {
   NewValueSheet,
 } from "@/features/config/components/new-value-sheet";
 import { SmokeFeeTierForm } from "@/features/config/components/smoke-fee-tier-form";
-import {
-  GROUP_LABEL,
-  GROUPS,
-  groupFor,
-  type Group,
-} from "@/features/config/keys";
+import { GROUP_LABEL, GROUPS, groupFor } from "@/features/config/keys";
 import {
   itemId,
   type CatalogueRow,
   type ConfigRow,
 } from "@/features/config/types";
+import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
 
 /* OW 10 — the config screen (card ^ref-12). Skeleton S8: title + ตั้งค่าใหม่, filter bar,
@@ -49,14 +51,6 @@ import { createClient } from "@/lib/supabase/server";
 
 const PAGE_SIZE = 6; // the ConfigTable contract: six per page from the first release
 
-const control =
-  "h-11 rounded-md border border-border bg-surface px-3 text-body text-text-primary " +
-  "focus-visible:border-focus-ring focus-visible:outline-2 focus-visible:outline-focus-ring";
-
-function one(value: string | string[] | undefined): string {
-  return (Array.isArray(value) ? value[0] : value) ?? "";
-}
-
 /** `SOURCE:item_key:scope` — the identity `itemId()` builds. Split from the right, because
  * a `CONFIG` key never contains a colon but this keeps the parse honest if one ever does. */
 function parseItemId(raw: string) {
@@ -72,7 +66,9 @@ function parseItemId(raw: string) {
 
 export default async function ConfigPage(props: PageProps<"/owner/config">) {
   const params = await props.searchParams;
-  const group = one(params.group);
+  // Checked against GROUPS, so an unknown ?group= reads as "all" instead of an empty group.
+  const rawGroup = one(params.group);
+  const group = GROUPS.find((g) => g === rawGroup);
   const mode = one(params.mode) === "table" ? "table" : "cards";
   const page = Math.max(1, Number.parseInt(one(params.page), 10) || 1);
   const set = one(params.set);
@@ -127,7 +123,11 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
 
   const href = (over: Record<string, string | null>) => {
     const next = new URLSearchParams();
-    const base: Record<string, string> = { group, mode, page: String(page) };
+    const base: Record<string, string> = {
+      group: group ?? "",
+      mode,
+      page: String(page),
+    };
     for (const [k, v] of Object.entries({ ...base, ...over })) {
       if (
         v &&
@@ -143,16 +143,14 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
 
   const closeHref = href({ set: null, history: null });
   const target = set && set !== "1" ? parseItemId(set) : null;
-  const historyTarget = history ? (byItem.get(history) ?? []) : [];
+  const targetRows = byItem.get(set) ?? [];
+  const historyTarget = byItem.get(history) ?? [];
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-h1 text-text-primary">ตั้งค่าระบบ</h1>
-        <Link
-          href={href({ set: "1", history: null })}
-          className="inline-flex h-11 items-center rounded-md bg-accent px-4 text-label text-accent-fg hover:bg-accent-hover"
-        >
+        <Link href={href({ set: "1", history: null })} className={actionButton}>
           ตั้งค่าใหม่
         </Link>
       </div>
@@ -181,9 +179,7 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
       {target?.source === "SMOKE_FEE_TIER" ? (
         <SmokeFeeTierForm
           current={
-            (byItem.get(set) ?? []).find((r) => r.is_current) ??
-            (byItem.get(set) ?? [])[0] ??
-            null
+            targetRows.find((r) => r.is_current) ?? targetRows[0] ?? null
           }
           backHref={closeHref}
           closeHref={closeHref}
@@ -208,30 +204,25 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
         method="get"
         className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-surface p-4"
       >
-        <label className="flex flex-col gap-1">
-          <span className="text-label text-text-secondary">หมวด</span>
-          <select name="group" defaultValue={group} className={control}>
+        <Field label="หมวด">
+          <select name="group" defaultValue={group ?? ""} className={control}>
             <option value="">ทั้งหมด</option>
             {GROUPS.map((g) => (
               <option key={g} value={g}>
-                {GROUP_LABEL[g as Group]}
+                {GROUP_LABEL[g]}
               </option>
             ))}
           </select>
-        </label>
+        </Field>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-label text-text-secondary">มุมมองบนมือถือ</span>
+        <Field label="มุมมองบนมือถือ">
           <select name="mode" defaultValue={mode} className={control}>
             <option value="cards">การ์ด</option>
             <option value="table">ตาราง</option>
           </select>
-        </label>
+        </Field>
 
-        <button
-          type="submit"
-          className="h-11 rounded-md bg-accent px-4 text-label text-accent-fg hover:bg-accent-hover"
-        >
+        <button type="submit" className={actionButton}>
           กรอง
         </button>
       </form>
@@ -255,7 +246,7 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
           emptyState={
             <p className="rounded-lg border border-border bg-surface p-6 text-center text-body text-text-secondary">
               {group
-                ? `ยังไม่ได้ตั้งค่าในหมวด${GROUP_LABEL[group as Group] ?? ""}`
+                ? `ยังไม่ได้ตั้งค่าในหมวด${GROUP_LABEL[group]}`
                 : "ยังไม่ได้ตั้งค่าใดในระบบ"}{" "}
               — กด “ตั้งค่าใหม่” เพื่อเริ่ม
             </p>
@@ -265,10 +256,7 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
 
       <nav className="flex items-center justify-between gap-4">
         {page > 1 ? (
-          <Link
-            href={href({ page: String(page - 1) })}
-            className="inline-flex h-11 items-center text-label text-accent hover:underline"
-          >
+          <Link href={href({ page: String(page - 1) })} className={actionLink}>
             ← ก่อนหน้า
           </Link>
         ) : (
@@ -278,10 +266,7 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
           {page} / {lastPage}
         </span>
         {page < lastPage ? (
-          <Link
-            href={href({ page: String(page + 1) })}
-            className="inline-flex h-11 items-center text-label text-accent hover:underline"
-          >
+          <Link href={href({ page: String(page + 1) })} className={actionLink}>
             ถัดไป →
           </Link>
         ) : (

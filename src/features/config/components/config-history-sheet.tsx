@@ -1,7 +1,7 @@
-import Link from "next/link";
-
+import { thaiDate } from "@/lib/format/date";
 import { labelFor } from "../keys";
-import { thaiDate, type ConfigRow } from "../types";
+import type { ConfigRow } from "../types";
+import { Sheet } from "./sheet";
 
 /* The ประวัติ action's panel — OW 10 (card ^ref-12).
  *
@@ -29,26 +29,13 @@ export function ConfigHistorySheet({
   if (!head) return null;
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface-sunken p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-h2 text-text-primary">
-            ประวัติ · {labelFor(head.source, head.item_key, head.item_label_th)}
-          </h2>
-          {head.scope_name_th ? (
-            <p className="text-caption text-text-muted">
-              เฉพาะ {head.scope_name_th}
-            </p>
-          ) : null}
-        </div>
-        <Link
-          href={closeHref}
-          className="inline-flex h-11 items-center text-label text-accent hover:underline"
-        >
-          ปิด
-        </Link>
-      </div>
-
+    <Sheet
+      title={`ประวัติ · ${labelFor(head.source, head.item_key, head.item_label_th)}`}
+      subtitle={head.scope_name_th ? `เฉพาะ ${head.scope_name_th}` : undefined}
+      closeHref={closeHref}
+      closeLabel="ปิด"
+      tone="history"
+    >
       <p className="text-caption text-text-secondary">
         ทุกแถวยังอ่านได้เสมอ ค่าที่เคยใช้คำนวณไปแล้วจะไม่ถูกเขียนทับ (BR23)
       </p>
@@ -86,6 +73,6 @@ export function ConfigHistorySheet({
           </li>
         ))}
       </ol>
-    </section>
+    </Sheet>
   );
 }
