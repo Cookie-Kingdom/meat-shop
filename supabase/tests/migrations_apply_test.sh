@@ -225,6 +225,31 @@ else
   failures=$((failures + 1))
 fi
 
+# ^ref-62 TC-02: an `alter type ... add value` migration is ALONE in its file. The one
+# assertion on that card SQL cannot make, because the database has the enum and not the file.
+#
+# Two reasons it matters, and each is sufficient: the statement cannot be rolled back, so a
+# file that fails after it leaves the enum extended and the rest missing; and the new value
+# cannot be USED in the transaction that added it, which `supabase db push` wraps each file
+# in. The second breaks the live apply and not this one — psql here runs each statement in
+# its own transaction — so without this check the defect goes green in the harness and red
+# against the project.
+for f in supabase/migrations/*.sql; do
+  grep -qi 'alter[[:space:]]\+type.*add[[:space:]]\+value' "$f" || continue
+  # Statements, not lines: comments and blank lines are free, a second `;` is not.
+  n=$(sed 's/--.*//' "$f" | tr -d '
+' | tr ';' '
+' | grep -c '[^[:space:]]')
+  if [ "$n" -eq 1 ]; then
+    echo "PASS  $(basename "$f") is one statement (enum value, ^ref-62 TC-02)"
+  else
+    echo "FAIL  $(basename "$f") adds an enum value and holds $n statements"
+    echo "      An enum value cannot be rolled back and cannot be used in the transaction"
+    echo "      that added it. Split it into its own migration."
+    failures=$((failures + 1))
+  fi
+done
+
 # Each test raises its own <NAME>_PASSED exception to roll back; anything else is a real
 # failure. A test that completes without raising has not proved anything, so that fails too.
 for f in supabase/tests/*_test.sql; do

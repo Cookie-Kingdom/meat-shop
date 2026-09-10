@@ -44,12 +44,35 @@ begin
                          'chef_house_location_id', 'state', 'event_date', 'created_at');
   assert v_n = 8, format('TC-01: lots is missing columns (%s of 8)', v_n);
 
-  -- D01: one dispatch round is one lot. NOT NULL stops a lot floating free of a round;
-  -- UNIQUE stops one round growing a second lot. Both halves, or the rule is half enforced.
-  select is_nullable into v_txt
+  -- D01: one dispatch round is one lot. Two halves, and ^ref-62 moved one of them.
+  --
+  -- UNIQUE stops one round growing a second lot, and is untouched. The other half — a lot
+  -- cannot float free of a round — WAS `po_delivery_id NOT NULL` and is now the
+  -- `lots_round_or_opening` CHECK, because an opening lot is meat that was in a freezer on
+  -- day one with no purchase order behind it (ADR-021). The check is STRICTLY STRONGER than
+  -- the NOT NULL it replaced: for an ordinary lot it still demands the round, and it also
+  -- demands po_id, foodiva_sent_weight_kg and chef_house_location_id, which the NOT NULL
+  -- never did. For an opening lot it demands the absence of all four, which is what stops
+  -- the synthetic-round design ADR-021 rejected being reachable through the back door.
+  --
+  -- So this assert changed from "the column is NOT NULL" to "the constraint that replaced it
+  -- exists", and the behavioural halves are opening_schema_test.sql TC-06 and TC-07. Do not
+  -- put the NOT NULL back: it would refuse every opening balance and the failure would be a
+  -- constraint name reaching a chef house counter.
+  select count(*) into v_n
+    from pg_constraint
+   where conrelid = 'public.lots'::regclass
+     and contype = 'c'
+     and conname = 'lots_round_or_opening';
+  assert v_n = 1,
+    'TC-01: lots_round_or_opening is gone — nothing stops a lot floating free of a round (D01)';
+
+  select count(*) into v_n
     from information_schema.columns
-   where table_schema = 'public' and table_name = 'lots' and column_name = 'po_delivery_id';
-  assert v_txt = 'NO', 'TC-01: lots.po_delivery_id is nullable — a lot with no round (D01)';
+   where table_schema = 'public' and table_name = 'lots' and column_name = 'is_opening'
+     and is_nullable = 'NO';
+  assert v_n = 1,
+    'TC-01: lots.is_opening is missing or nullable — the check above has nothing to branch on';
 
   select count(*) into v_n
     from pg_index i

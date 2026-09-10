@@ -1,0 +1,31 @@
+-- Card ^ref-62, T1 — the OPENING movement type. ONE STATEMENT, AND NOTHING ELSE IN THIS FILE.
+--
+-- Two separate reasons the file is alone, and either one is sufficient:
+--
+--   1. `alter type ... add value` cannot be rolled back. In a file with other DDL, a failure
+--      halfway leaves the enum extended and the rest of the migration missing — a state no
+--      re-run can reach and no rollback can undo. Alone, the file is either applied or not.
+--
+--   2. The new value cannot be USED in the same transaction that added it: Postgres raises
+--      `unsafe use of new value "OPENING"`. Migration ...0012 writes a trigger predicate on
+--      it, so the two cannot share a transaction, and `supabase db push` wraps each file in
+--      one. Merging these two files breaks the live apply and not the Docker one, because
+--      psql here runs each statement in its own transaction. That asymmetry is the whole
+--      trap: it would go green in the harness and red against the project.
+--
+-- WHY A NEW VALUE RATHER THAN `ADJUSTMENT` WITH A REASON (ADR-021, PLAN Finding 1).
+-- `API_DATA_MODEL.md`'s Open Questions proposed `ADJUSTMENT` rows carrying a reason string.
+-- ADR-021 closed 9 Sep 2026 and says the opposite; it wins, and the Open Questions row is
+-- stale text rather than a competing decision. Three consequences settle it:
+--
+--   * The close switch has to be enforceable. "No OPENING row after the close" is a trigger
+--     predicate on `movement_type = 'OPENING'`. Against ADJUSTMENT it becomes
+--     `reason like 'OPENING%'` — a business rule enforced by string matching on free text,
+--     bypassed by the first person who types the Thai for it instead.
+--   * ADJUSTMENT already means a correction after go-live and will keep meaning it. Sharing
+--     the value makes "show me the corrections" and "show me the opening position" the same
+--     query with a LIKE between them, for ever.
+--   * The cost-completeness rule is scoped to exactly one movement type. Scoped to
+--     ADJUSTMENT it would demand a cost on every correction the system ever writes.
+
+alter type movement_type add value 'OPENING';
