@@ -30,7 +30,11 @@ import { one } from "@/lib/params";
  * ledger's balances for that tuple — a refetch, never an optimistic decrement — and shows TWO
  * badges, frozen and ready, never one summed figure (BR19, TDD TC-44).
  *
- * Needs a report for the date that is OPEN or UNLOCKED. None: link back to BR 01. CLOSED: locked.
+ * Needs a report for the date. None: link back to BR 01. A CLOSED day keeps the form, under a
+ * locked notice: ^ref-08 admits a correction by an APPROVED, unexpired unlock_requests row and
+ * leaves the day CLOSED (ref-08-unlock/PLAN-unlock.md Finding 1). Lane C's trigger reads that
+ * approval at write time (R42). This screen cannot see the approval, so it does not guess:
+ * without one, REPORT_CLOSED comes back as a Thai sentence and nothing is written.
  */
 
 type FrozenRow = {
@@ -132,17 +136,18 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
         <Notice tone="danger">อ่านสต็อกแช่แข็งไม่สำเร็จ — {frozenRes.error.message}</Notice>
       ) : null}
 
+      {report?.status === "CLOSED" ? (
+        <Notice tone="locked">
+          วันที่ {thaiDate(day.date)} ปิดแล้ว — บันทึกได้เฉพาะเมื่อเจ้าของร้านอนุมัติปลดล็อกวันนี้
+          และยังไม่หมดเวลา ถ้ายังไม่ได้อนุมัติ ระบบจะไม่รับรายการ
+        </Notice>
+      ) : null}
       {!report ? (
         <Notice tone="warning">
           วันที่ {thaiDate(day.date)} ยังไม่ได้เปิด —{" "}
           <Link href={`/branch?${qs({})}`} className={actionLink}>
             เปิดวันก่อน
           </Link>
-        </Notice>
-      ) : report.status === "CLOSED" ? (
-        <Notice tone="locked">
-          วันที่ {thaiDate(day.date)} ปิดแล้ว — บันทึกเพิ่มไม่ได้ ถ้าต้องแก้
-          ต้องขอปลดล็อกจากเจ้าของร้าน
         </Notice>
       ) : rows.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface p-6 text-center text-body text-text-secondary">
