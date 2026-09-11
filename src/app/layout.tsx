@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans_Thai } from "next/font/google";
+import { IBM_Plex_Mono, Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { isDemoMode } from "@/features/demo/personas";
 
@@ -7,6 +7,15 @@ const notoSansThai = Noto_Sans_Thai({
   variable: "--font-noto-sans-thai",
   subsets: ["thai", "latin"],
   weight: ["400", "500", "600"],
+  display: "swap",
+});
+
+/* Every number in the system renders in it (DESIGN.md → Typography), so it is not
+ * optional and not lazy-loaded. */
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["500", "600"],
   display: "swap",
 });
 
@@ -23,7 +32,10 @@ export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="th" className={`${notoSansThai.variable} h-full antialiased`}>
+    <html
+      lang="th"
+      className={`${notoSansThai.variable} ${ibmPlexMono.variable} h-full antialiased`}
+    >
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

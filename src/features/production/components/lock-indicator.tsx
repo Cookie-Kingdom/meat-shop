@@ -6,9 +6,8 @@ import { thaiDateTime } from "@/lib/format/date";
  * closed it and when, the lock icon, and the unlock path. For an L3 the path is a sentence and
  * no control — the unlock panel is the Owner's (^ref-08, OW 11).
  *
- * ponytail: the `--hatch` diagonal DESIGN.md specifies is not in tokens.css yet, and adding a
- * token is a shared-file edit on a day eight lanes are merging. The lock icon and the locked
- * tokens carry the state until it lands; then this is a one-class change. */
+ * The `--hatch` diagonal is what makes a locked surface unmistakable in greyscale and in
+ * both themes; the lock icon and the locked tokens carry the state for colour readers. */
 
 export function LockIndicator({
   closedAt,
@@ -18,7 +17,7 @@ export function LockIndicator({
   closedBy: string | null;
 }) {
   return (
-    <div className="flex gap-3 rounded-lg border border-locked bg-locked-subtle p-4 text-body-sm text-text-primary">
+    <div className="flex gap-3 rounded-lg border border-locked bg-locked-subtle bg-[image:var(--hatch)] p-4 text-body-sm text-text-primary">
       <Lock aria-hidden className="mt-0.5 size-5 shrink-0 text-locked" />
       <div className="flex flex-col gap-1">
         <p className="text-label text-text-primary">
