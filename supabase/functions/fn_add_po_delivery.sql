@@ -78,6 +78,9 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_foodiva_sent_weight_kg', p_foodiva_sent_weight_kg);
+
   v_actor := fn_require_owner();
 
   if p_event_date is null then

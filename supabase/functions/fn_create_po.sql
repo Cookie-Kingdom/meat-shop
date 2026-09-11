@@ -56,6 +56,12 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_ordered_weight_kg', p_ordered_weight_kg);
+  perform fn_require_two_decimals('p_unit_price_thb_per_kg', p_unit_price_thb_per_kg);
+  perform fn_require_two_decimals('p_brine_pct_offered', p_brine_pct_offered);
+  perform fn_require_two_decimals('p_brine_cost_thb', p_brine_cost_thb);
+
   v_actor := fn_require_owner();
 
   if p_event_date is null then

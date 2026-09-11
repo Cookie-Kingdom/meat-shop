@@ -48,6 +48,9 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_replacement_qty_delta', p_replacement_qty_delta);
+
   -- L1 only (RPC table, ADR-004). The check is here and not in the route: a SECURITY
   -- DEFINER function runs as the owner, so without this any authenticated session could
   -- reverse any row in the ledger and the UI would be the only thing saying otherwise.

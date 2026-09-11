@@ -15,6 +15,13 @@ export type RpcResult = { ok: true } | RpcFailure;
  * on. */
 export type Messages = Record<string, string | ((raw: string) => string)>;
 
+/** Refusals any wrapper can meet. A feature's own map still wins for a code it names. */
+const SHARED: Messages = {
+  // ^fix-numeric-scale: fn_require_two_decimals, which every write RPC taking a money,
+  // weight or quantity value calls.
+  TOO_MANY_DECIMALS: "ตัวเลขมีทศนิยมได้ไม่เกิน 2 ตำแหน่ง",
+};
+
 /** Postgres reports our raises as `CODE: detail`. Split the code off so the screen can show
  * the Thai sentence for the ones we named, and the raw message for the ones we did not. */
 export function toFailure(
@@ -22,7 +29,7 @@ export function toFailure(
   messages: Messages,
 ): RpcFailure {
   const code = error.message.match(/^([A-Z_]+):/)?.[1] ?? "";
-  const known = messages[code];
+  const known = messages[code] ?? SHARED[code];
   const message =
     typeof known === "function" ? known(error.message) : (known ?? error.message);
   return { ok: false, code, message };

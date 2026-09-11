@@ -43,6 +43,9 @@ declare
   v_actor uuid;
   v_type  movement_type;
 begin
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_cost_thb_per_kg', p_cost_thb_per_kg);
+
   v_actor := fn_require_owner();
 
   if p_cost_thb_per_kg is null then

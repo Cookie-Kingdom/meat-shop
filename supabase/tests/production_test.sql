@@ -337,6 +337,17 @@ begin
   end;
   assert v_ok, format('TC-20: a null p_sources got %s', coalesce(v_err, 'no exception at all'));
 
+  -- NS-06 (^fix-numeric-scale). smoke_daily_log_sources.input_weight_kg is numeric(12,2): a
+  -- third decimal is refused by name, and the count below proves it wrote no log either.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_upsert_smoke_daily_log(gen_random_uuid(), v_lotV, v_day + 5,
+      jsonb_build_array(jsonb_build_object('lot_id', v_lotV, 'input_weight_kg', 1.005)));
+  exception when others then
+    v_err := sqlerrm; v_ok := v_err like 'TOO_MANY_DECIMALS: source 1 input_weight_kg is 1.005 %';
+  end;
+  assert v_ok, format('NS-06: a 1.005 kg source got %s', coalesce(v_err, 'no exception at all'));
+
   select count(*) into v_n from smoke_daily_logs where lot_id = v_lotV and event_date = v_day + 5;
   assert v_n = 0, format('TC-20: %s log row(s) written by the refused calls', v_n);
 

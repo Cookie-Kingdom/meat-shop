@@ -74,6 +74,9 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_dispatched_weight_kg', p_dispatched_weight_kg);
+
   perform fn_require_owner();
 
   ------------------------------------------------------------------------- the retry check

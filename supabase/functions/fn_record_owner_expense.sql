@@ -20,8 +20,9 @@
 -- select-then-insert gap. Then the stored row is compared with the payload — the same payload
 -- is a dropped connection and returns the original id; a different one is
 -- EXPENSE_IDEMPOTENCY_CONFLICT, because the key wins and the payload may not quietly move.
--- The amount is rounded to numeric(12,2) BEFORE the comparison, so a retry of 100.005 matches
--- the 100.01 the column stored.
+-- The amount used to be rounded to numeric(12,2) before the comparison, so that a retry of
+-- 100.005 matched the 100.01 the column stored. ^fix-numeric-scale refuses a third decimal
+-- before that point (fn_require_two_decimals), so the round() below is now a no-op.
 --
 -- MONTH (PLAN Finding 3, …0025): MONTHLY_FIXED must name the month it covers; every other kind
 -- must not, and lands in the month of its event_date (ADR-020 — an investment is expensed in
@@ -58,6 +59,9 @@ begin
   if p_idempotency_key is null then
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
+
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_amount_thb', p_amount_thb);
 
   v_actor := fn_require_owner();
 
