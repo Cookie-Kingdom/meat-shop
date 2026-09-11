@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/features/auth/actions";
+import { DemoBar } from "@/features/demo/components/demo-bar";
+import { isDemoMode } from "@/features/demo/personas";
 
 /* The frame the three role groups share. Deliberately thin — nav, BranchSelector,
  * DateNavigator and the theme toggle are the app-shell card, not this one. It exists so
@@ -14,6 +16,7 @@ export function RoleShell({
 }) {
   return (
     <>
+      {isDemoMode() ? <DemoBar /> : null}
       <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-4 py-3">
         <span className="text-h3 text-text-primary">{title}</span>
         <form action={signOut}>
