@@ -3,7 +3,7 @@
 --
 -- Every value below that the Owner has not confirmed is a demo placeholder (D11). It does not
 -- settle ^ref-61. Every transaction goes through its real fn_*, as the persona who would make
--- it, the way the SQL tests do — with one exception, marked at the call site (^ref-66).
+-- it, the way the SQL tests do.
 --
 -- Dates hang off current_date so every reset looks like a fresh week. Backdating is open
 -- because opening balances are never closed here (D8; PLAN Finding 3).
@@ -109,11 +109,10 @@ begin
   v_lotB := fn_add_po_delivery(gen_random_uuid(), v_po, d - 5,  100.00, v_cm);
   v_lotC := fn_add_po_delivery(gen_random_uuid(), v_po, d - 1,  100.00, v_cm);
 
-  -- ^ref-66: THE ONE DIRECT WRITE. No fn_* assigns a lot to its operator yet, and without it
-  -- fn_require_operator refuses every chef-house step (NOT_ASSIGNED_OPERATOR). This is the
-  -- same UPDATE the SQL test fixtures use. Approved by the developer 11 Sep 2026; replace it
-  -- with the writer's call when ^ref-66 lands.
-  update lots set assigned_operator_id = v_chef where id in (v_lotA, v_lotB, v_lotC);
+  -- CM 01: each lot names the operator who works it, or fn_require_operator refuses every
+  -- chef-house step (NOT_ASSIGNED_OPERATOR; ^ref-66).
+  perform fn_assign_lot_operator(gen_random_uuid(), l, v_chef)
+     from unnest(array[v_lotA, v_lotB, v_lotC]) l;
 
   -- One truck per lot, Foodiva to Chiang Mai.
   v_run := fn_create_transport_run(gen_random_uuid(), 'FOODIVA_TO_CM', d - 10, 'รถกระบะ', false, 4500.00);

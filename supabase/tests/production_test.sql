@@ -95,12 +95,12 @@ begin
   v_lotV := fn_add_po_delivery(gen_random_uuid(), v_po, v_day, 100.00, v_chef);
   v_lotU := fn_add_po_delivery(gen_random_uuid(), v_po, v_day, 100.00, v_chef);
 
-  -- The dispatch leg (^ref-22) is not what this card tests, so the state and the assignment
-  -- are set directly. v_lotU stays unassigned for now — it is TC-12's subject before it
-  -- becomes TC-34's.
-  update lots set state = 'IN_TRANSIT', assigned_operator_id = v_l3
-   where id in (v_lotA, v_lotB, v_lotV);
-  update lots set state = 'IN_TRANSIT' where id = v_lotU;
+  -- The assignment goes through its writer, as the Owner (^ref-66). The dispatch leg (^ref-22)
+  -- is not what this card tests, so the state is still set directly. v_lotU stays unassigned
+  -- for now — it is TC-12's subject before it becomes TC-34's.
+  perform fn_assign_lot_operator(gen_random_uuid(), l, v_l3)
+     from unnest(array[v_lotA, v_lotB, v_lotV]) l;
+  update lots set state = 'IN_TRANSIT' where id in (v_lotA, v_lotB, v_lotV, v_lotU);
 
   --------------------------------------------------------------------------------- TC-09
   -- A deactivated operator holding a live token is NO_ACTOR, not FORBIDDEN. The order of the
