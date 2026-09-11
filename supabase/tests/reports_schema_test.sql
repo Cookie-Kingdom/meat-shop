@@ -12,7 +12,9 @@ do $$
 declare
   v_views text[] := array[
     -- §55 (^ref-55)
-    'v_daily_sales', 'v_daily_sales_qty', 'v_monthly_summary', 'v_monthly_summary_qty'
+    'v_daily_sales', 'v_daily_sales_qty', 'v_monthly_summary', 'v_monthly_summary_qty',
+    -- §56 (^ref-56)
+    'v_meat_consumption', 'v_lot_unit_cost', 'v_meat_cost_attribution', 'v_cost_breakdown'
   ];
   v_qty_views text[] := array['v_daily_sales_qty', 'v_monthly_summary_qty'];
   v_bad text;
