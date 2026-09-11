@@ -1,7 +1,7 @@
 -- Card ^fix-cm02-sign-line — CM 02 signs the lot's Foodiva -> CM truck, in the same transaction
 -- as the receipt row (fn_record_lot_receipt -> fn_confirm_transport_receipt).
 --
--- Covers SL-01 ... SL-08 from v.0.1/ready-fix-cm02-sign-line/TDD-cm02-sign-line.md.
+-- Covers SL-01 ... SL-08 from v.0.1/done/done-fix-cm02-sign-line/TDD-cm02-sign-line.md.
 -- The path with no line at all is production_test.sql TC-14, unchanged.
 --
 -- The acceptance line, one assertion per clause:
