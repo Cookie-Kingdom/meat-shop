@@ -1,0 +1,4 @@
+# Shell scripts run under bash, which reads a CRLF line ending as part of the command
+# (reset.sh: `$'\r': command not found`). With core.autocrlf=true, Windows checks them out
+# as CRLF unless this pins them to LF.
+*.sh text eol=lf
