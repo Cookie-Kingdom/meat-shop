@@ -84,7 +84,11 @@ begin
   v_actor := fn_require_branch(v_report.location_id);
 
   ------------------------------------------------------------------------ 1. the replay (R4)
-  select id into v_id from rice_records where idempotency_key = p_idempotency_key;
+  -- The row holds only the newest key, so an older one is looked up in prior_keys (…0026). A
+  -- morning call replayed after the evening's write is still a replay (TC-22).
+  select id into v_id from rice_records
+   where idempotency_key = p_idempotency_key
+      or prior_keys @> array[p_idempotency_key];
 
   if v_id is null then
     ------------------------------------------------------------------ 2. the window (R28)
@@ -173,7 +177,8 @@ begin
            cooked_today_kg      = coalesce(excluded.cooked_today_kg,     rice_records.cooked_today_kg),
            raw_remaining_kg     = coalesce(excluded.raw_remaining_kg,    rice_records.raw_remaining_kg),
            cooked_remaining_kg  = coalesce(excluded.cooked_remaining_kg, rice_records.cooked_remaining_kg),
-           idempotency_key      = excluded.idempotency_key
+           idempotency_key      = excluded.idempotency_key,
+           prior_keys           = rice_records.prior_keys || rice_records.idempotency_key
     returning id into v_id;
   end if;
 
