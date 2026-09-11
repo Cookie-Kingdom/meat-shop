@@ -95,7 +95,8 @@ begin;
 select set_config('request.jwt.claims', '{"sub":"$ADMIN"}', true);
 select fn_record_sales(
   gen_random_uuid(),
-  (select id from daily_reports where report_date = current_date - 1),
+  (select id from daily_reports where report_date = current_date - 1
+      and location_id = (select id from locations where code = 'BRA53')),
   jsonb_build_array(jsonb_build_object(
     'product_code', 'MEAT_BOX', 'qty', 5,
     'lot_id', (select id from lots where lot_code = 'LOT-53'),

@@ -242,6 +242,8 @@ begin
   --------------------------------------------------------------------------------- TC-09
   -- ^ref-33: v_lot_daily_yield, OW 03's per-day trend. Its figure has its own name and its own
   -- base — the day's input — so it is neither smoke_yield_pct nor loss (ADR-011, R17).
+  -- TC-05 left the L2's claim set, and the view is L1-only in its WHERE: read as the Owner.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   select * into v_row from v_lot_daily_yield where lot_id = v_lotP and event_date = v_day;
   assert v_row.input_weight_kg = 50.00 and v_row.packed_weight_kg = 40.00
      and v_row.bag_count = 80 and v_row.day_yield_pct = 80.00,

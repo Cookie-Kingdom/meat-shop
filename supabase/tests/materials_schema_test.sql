@@ -214,10 +214,14 @@ begin
 
   --------------------------------------------------------------------------------- TC-08
   -- ADR-007 as narrowed at ^ref-19: this migration added no clock. Same query as
-  -- purchasing_schema_test.sql TC-03, so the two fail together.
-  select coalesce(string_agg(distinct table_name, ', '), '(none)') into v_txt
-    from information_schema.columns
-   where table_schema = 'public' and column_name in ('business_date', 'event_at');
+  -- purchasing_schema_test.sql TC-03, so the two fail together. Base tables only: a read view
+  -- may pass on the ledger's clock (v_branch_diff, the ^ref-55…^ref-58 reports) without
+  -- storing one.
+  select coalesce(string_agg(distinct c.table_name, ', '), '(none)') into v_txt
+    from information_schema.columns c
+    join information_schema.tables t using (table_schema, table_name)
+   where c.table_schema = 'public' and c.column_name in ('business_date', 'event_at')
+     and t.table_type = 'BASE TABLE';
   assert v_txt = 'stock_ledger',
     format('TC-08: business_date/event_at are on [%s], not on stock_ledger alone', v_txt);
 

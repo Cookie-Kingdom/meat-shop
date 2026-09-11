@@ -149,11 +149,9 @@ begin
     p_location_id => v_b1, p_stock_state => 'READY', p_movement_type => 'TRANSFER_IN',
     p_qty_delta => 10, p_business_date => v_d1, p_product_id => v_chilli);
 
-  -- The reference day, B1 on D1, and an OPEN report on D1 + 1 with no sales.
+  -- The reference day, B1 on D1. An OPEN report on D1 + 1 with no sales follows D1's close.
   insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
     (v_b1, v_d1, v_d1 + time '09:00', 'OPEN', v_owner) returning id into v_r1d1;
-  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
-    (v_b1, v_d1 + 1, v_d1 + 1 + time '09:00', 'OPEN', v_owner) returning id into v_r1d2;
 
   insert into sales_lines (daily_report_id, product_id, lot_id, smoke_date_group_id, qty,
                            unit_price_thb, pack_weight_kg, channel, created_by)
@@ -177,6 +175,9 @@ begin
     (v_r1d1, 'ICE',       100.00, 'สมชาย', v_owner),
     (v_r1d1, 'PACKAGING',  50.00, 'สมชาย', v_owner);
   update daily_reports set status = 'CLOSED', closed_by = v_owner, closed_at = now() where id = v_r1d1;
+  -- D1 + 1 opens only now: one OPEN report per branch (daily_reports_one_open).
+  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
+    (v_b1, v_d1 + 1, v_d1 + 1 + time '09:00', 'OPEN', v_owner) returning id into v_r1d2;
 
   --------------------------------------------------------------------------------- TC-25
   select * into v_row from v_pnl where business_date = v_d1 and location_id = v_b1;
