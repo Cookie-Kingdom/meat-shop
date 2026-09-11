@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Other lanes' git worktrees: their own checkouts, linted there.
+    ".worktrees/**",
   ]),
 ]);
 
