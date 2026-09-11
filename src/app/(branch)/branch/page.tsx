@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { actionLink } from "@/components/ui/controls";
+import { readDiff } from "@/features/branch-close/queries";
 import { submitOpenDay } from "@/features/branch/actions";
 import { BranchHeading } from "@/features/branch/components/branch-heading";
 import {
@@ -22,8 +23,10 @@ import { one } from "@/lib/params";
  *   เปิดวัน           a report exists for the date            (v_daily_reports)
  *   รับเนื้อเข้าสาขา     no CENTRAL_TO_BRANCH line is outstanding (v_outstanding_receipts)
  *   แบ่งละลายเนื้อ       thawed_kg > 0 for the date               (v_daily_reports)
- * BR 03, BR 07, BR 08 and BR 09 render disabled until their cards land. BR 04 is not listed:
- * it is Phase 2 (v0.2:114).
+ *   ปิดยอดรายวัน       the day's Diff is zero, or the day is closed (v_branch_diff)   (^ref-46)
+ *   ยืนยันปิดวัน        status = CLOSED                           (v_daily_reports)  (^ref-46)
+ * BR 03 and BR 08 render disabled until their card lands. BR 04 is not listed: it is Phase 2
+ * (v0.2:114).
  *
  * THE ROLE GATE IS NOT HERE. Every view carries its role test in its WHERE (R34); the (branch)
  * layout's requireRole is the mirror. The morning group is three items, so it sits above the
@@ -38,16 +41,20 @@ export default async function BranchToday(props: PageProps<"/branch">) {
   const branch = day.branch;
   if (!branch) return <NoBranch error={day.error} />;
 
-  const { count: outstanding } = await day.supabase
-    .from("v_outstanding_receipts")
-    .select("line_id", { count: "exact", head: true })
-    .eq("route", "CENTRAL_TO_BRANCH")
-    .eq("to_location_id", branch.id);
+  const [{ count: outstanding }, { row: diff }] = await Promise.all([
+    day.supabase
+      .from("v_outstanding_receipts")
+      .select("line_id", { count: "exact", head: true })
+      .eq("route", "CENTRAL_TO_BRANCH")
+      .eq("to_location_id", branch.id),
+    readDiff(day.supabase, branch.id, day.date),
+  ]);
 
   /* One key per page view (PLAN T8): a double tap on เปิดวัน is a replay, and the redirect after
    * it renders a fresh key. */
   const key = crypto.randomUUID();
   const report = day.report;
+  const closed = report?.status === "CLOSED";
   const here = new URLSearchParams({ location: branch.id, date: day.date }).toString();
   const saved = one(params.saved);
   const err = one(params.err);
@@ -150,9 +157,21 @@ export default async function BranchToday(props: PageProps<"/branch">) {
           <h2 id="br01-close" className="text-h3 text-text-primary">
             ปิดวัน
           </h2>
-          <ChecklistItem label="ปิดยอดรายวัน" disabled detail="ยังไม่เปิดใช้งาน" />
+          <ChecklistItem
+            label="ปิดยอดรายวัน"
+            href={`/branch/close?${here}`}
+            done={closed || (diff !== null && Number(diff.diff_kg) === 0)}
+            blocked={report ? undefined : "เปิดวันก่อน"}
+            detail={diff ? `Diff ${formatKg(diff.diff_kg)} กก.` : "ยังไม่มีเนื้อพร้อมขายเข้าออก"}
+          />
           <ChecklistItem label="เช็ควัสดุ" disabled detail="ยังไม่เปิดใช้งาน" />
-          <ChecklistItem label="ยืนยันปิดวัน" disabled detail="ยังไม่เปิดใช้งาน" />
+          <ChecklistItem
+            label="ยืนยันปิดวัน"
+            href={`/branch/close/confirm?${here}`}
+            done={closed}
+            blocked={report ? undefined : "เปิดวันก่อน"}
+            detail={closed ? "ปิดวันแล้ว" : "ยังไม่ได้ปิดวัน"}
+          />
         </section>
       </div>
     </div>
