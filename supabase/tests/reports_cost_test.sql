@@ -221,8 +221,6 @@ begin
   ----------------------------------------------------------------------- the reference day
   insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
     (v_b1, v_d1, v_d1 + time '09:00', 'OPEN', v_owner) returning id into v_r1d1;
-  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
-    (v_b1, v_d1 + 1, v_d1 + 1 + time '09:00', 'OPEN', v_owner) returning id into v_r1d2;
 
   -- 12 boxes of lot A at 0.25 kg: SALE −3.00 kg.
   insert into sales_lines (daily_report_id, product_id, lot_id, smoke_date_group_id, qty,
@@ -251,6 +249,11 @@ begin
     (v_r1d1, 'ICE',       100.00, 'สมชาย', v_owner),
     (v_r1d1, 'PACKAGING',  50.00, 'สมชาย', v_owner);
 
+  update daily_reports set status = 'CLOSED', closed_by = v_owner, closed_at = now() where id = v_r1d1;
+  -- D1 + 1 opens only now: one OPEN report per branch (daily_reports_one_open).
+  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
+    (v_b1, v_d1 + 1, v_d1 + 1 + time '09:00', 'OPEN', v_owner) returning id into v_r1d2;
+
   -- D1 + 1 at B1: 8 boxes of opening lot O (−2.00 kg), and 0.50 kg of uncosted lot O2.
   insert into sales_lines (daily_report_id, product_id, lot_id, qty, unit_price_thb,
                            pack_weight_kg, channel, created_by)
@@ -261,8 +264,6 @@ begin
   perform fn_post_ledger(p_idempotency_key => gen_random_uuid(), p_item_type => 'SMOKED_MEAT',
     p_location_id => v_b1, p_stock_state => 'READY', p_movement_type => 'WASTE', p_qty_delta => -0.50,
     p_business_date => v_d1 + 1, p_lot_id => v_lotO2);
-
-  update daily_reports set status = 'CLOSED', closed_by = v_owner, closed_at = now() where id = v_r1d1;
 
   -- Lot C at B2: one 1.00 kg SALE on each of D1, D1 + 1, D1 + 2 (F2). Ledger only.
   for v_n in 0 .. 2 loop

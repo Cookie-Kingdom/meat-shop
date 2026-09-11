@@ -104,10 +104,13 @@ begin
   -- carries event_date + created_at, because a dispatch round belongs to no shift and is
   -- closed by nobody. The ADR's scope is corrected in the same change (Finding 2); this is
   -- the assert that stops the correction drifting back, and it fails the day a second table
-  -- carries either column, which is the day somebody re-reads ADR-007 on purpose.
-  select coalesce(string_agg(distinct table_name, ', '), '(none)') into v_txt
-    from information_schema.columns
-   where table_schema = 'public' and column_name in ('business_date', 'event_at');
+  -- carries either column, which is the day somebody re-reads ADR-007 on purpose. Base tables
+  -- only: a read view may pass on the ledger's clock without storing one.
+  select coalesce(string_agg(distinct c.table_name, ', '), '(none)') into v_txt
+    from information_schema.columns c
+    join information_schema.tables t using (table_schema, table_name)
+   where c.table_schema = 'public' and c.column_name in ('business_date', 'event_at')
+     and t.table_type = 'BASE TABLE';
   assert v_txt = 'stock_ledger',
     format('TC-03: business_date/event_at are on [%s], not on stock_ledger alone — re-read ADR-007', v_txt);
 

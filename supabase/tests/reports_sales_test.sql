@@ -75,11 +75,7 @@ begin
   insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
     (v_b1, v_d1, v_d1 + time '09:00', 'OPEN', v_owner) returning id into v_r1d1;
   insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
-    (v_b1, v_d2, v_d2 + time '09:00', 'OPEN', v_owner) returning id into v_r1d2;
-  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
     (v_b2, v_d1, v_d1 + time '09:00', 'OPEN', v_owner) returning id into v_r2d1;
-  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
-    (v_b2, v_d2, v_d2 + time '09:00', 'OPEN', v_owner) returning id into v_r2d2;
 
   -- B1, D1 (F1's sales half). MEAT_BOX in two lines, so the grain is proved to sum them.
   insert into sales_lines (daily_report_id, product_id, lot_id, qty, unit_price_thb,
@@ -89,18 +85,27 @@ begin
     (v_r1d1, v_addon,  v_lot, 3,    320.00, 0.25, 'LINE_MAN', v_owner),
     (v_r1d1, v_chilli, null,  5,     25.00, null, 'LINE_MAN', v_owner),
     (v_r1d1, v_rice,   null,  2.50,  60.00, null, 'LINE_MAN', v_owner);
-  -- B1, D2 stays OPEN (TC-04, TC-08).
-  insert into sales_lines (daily_report_id, product_id, lot_id, qty, unit_price_thb,
-                           pack_weight_kg, channel, created_by) values
-    (v_r1d2, v_box,    v_lot, 2,    350.00, 0.25, 'LINE_MAN', v_owner);
-  -- B2, D1: two rice lines at 33.33 (TC-03). B2, D2: a reported day with no sales (TC-09).
+  -- B2, D1: two rice lines at 33.33 (TC-03).
   insert into sales_lines (daily_report_id, product_id, lot_id, qty, unit_price_thb,
                            pack_weight_kg, channel, created_by) values
     (v_r2d1, v_rice,   null,  2.50,  33.33, null, 'LINE_MAN', v_owner),
     (v_r2d1, v_rice,   null,  2.50,  33.33, null, 'LINE_MAN', v_owner);
 
   update daily_reports set status = 'CLOSED', closed_by = v_owner, closed_at = now()
-   where id in (v_r1d1, v_r2d1, v_r2d2);
+   where id in (v_r1d1, v_r2d1);
+
+  -- D2 opens only now: one OPEN report per branch (daily_reports_one_open).
+  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
+    (v_b1, v_d2, v_d2 + time '09:00', 'OPEN', v_owner) returning id into v_r1d2;
+  insert into daily_reports (location_id, report_date, shift_started_at, status, opened_by) values
+    (v_b2, v_d2, v_d2 + time '09:00', 'OPEN', v_owner) returning id into v_r2d2;
+  -- B1, D2 stays OPEN (TC-04, TC-08).
+  insert into sales_lines (daily_report_id, product_id, lot_id, qty, unit_price_thb,
+                           pack_weight_kg, channel, created_by) values
+    (v_r1d2, v_box,    v_lot, 2,    350.00, 0.25, 'LINE_MAN', v_owner);
+  -- B2, D2: a reported day with no sales (TC-09).
+  update daily_reports set status = 'CLOSED', closed_by = v_owner, closed_at = now()
+   where id = v_r2d2;
 
   --------------------------------------------------------------------------------- TC-01
   select * into v_row from v_daily_sales

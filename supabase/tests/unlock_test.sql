@@ -257,8 +257,9 @@ begin
   assert v_n = 1, 'UL-05: an auto-approval must carry decided_at and no Owner impact';
 
   ---------------------------------------------------------------------------------- UL-06
-  v_resp := fn_request_unlock(gen_random_uuid(), 'DAILY_REPORT', v_rA4, 'ยอดขายวันพฤหัสผิด');
-  assert v_resp ->> 'status' = 'PENDING', format('UL-06: -4 with the key at 3 answered %s', v_resp);
+  -- Into v_resp2, so v_resp still holds UL-05's answer for UL-11's replay to match.
+  v_resp2 := fn_request_unlock(gen_random_uuid(), 'DAILY_REPORT', v_rA4, 'ยอดขายวันพฤหัสผิด');
+  assert v_resp2 ->> 'status' = 'PENDING', format('UL-06: -4 with the key at 3 answered %s', v_resp2);
 
   ---------------------------------------------------------------------------------- UL-10
   -- Finding 1: the approval admits writes through its row. The day is never flipped.
