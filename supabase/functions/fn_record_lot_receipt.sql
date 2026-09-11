@@ -8,10 +8,25 @@
 -- 75 reads 25%, not 23.47%. This function stores both figures and computes no percentage at
 -- all, which is the only version of it that cannot get that wrong.
 --
--- IT POSTS NO LEDGER ROW, AND THAT IS THE POINT (TC-14, Finding 10). The meat is already in
--- the ledger: fn_confirm_transport_receipt (^ref-22) took the IN_TRANSIT tuple down and put
--- the received weight up as FROZEN at the chef house on the same lot. Posting again here
--- would double the chef house balance. A receipt row is a measurement, not a movement.
+-- IT POSTS NO LEDGER ROW OF ITS OWN, AND THAT IS THE POINT (TC-14, Finding 10). The meat
+-- enters the chef house when its truck is signed for: fn_confirm_transport_receipt (^ref-22)
+-- takes the IN_TRANSIT tuple down and puts the received weight up as FROZEN on the same lot.
+-- A receipt row is a measurement, not a movement, and posting here as well would double the
+-- chef house balance.
+--
+-- BUT CM 02 SIGNS THE TRUCK (^fix-cm02-sign-line). No screen signs a FOODIVA_TO_CM line —
+-- OW 02 has no button on a CHEF_HOUSE line — so the first CM 02 save calls
+-- fn_confirm_transport_receipt on the lot's line, with this call's key, weight, date and
+-- effective reason, before the receipt row is written. One transaction, so a refusal of either
+-- half leaves both undone (ADR-002). Calling it rather than copying its ledger rows keeps one
+-- implementation of the movement, and every rule it checks. It signs only:
+--   - when the lot has exactly ONE Foodiva -> CM line. Two trucks cannot share one weight, so
+--     that raises RECEIPT_LINE_AMBIGUOUS rather than guessing which truck carried what;
+--   - when that line is UNSIGNED. A replay, CM 03 and every later correction find it signed
+--     and skip it, so they never sign twice and never move the ledger;
+--   - below LOT_CLOSED. A closed lot with an unsigned line predates this fix, and its close
+--     drew zero raw weight. Signing it now would leave raw FROZEN weight that nothing draws.
+-- No line at all (a fixture that sets IN_TRANSIT directly) is the receipt alone, as before.
 --
 -- ONE ROW PER LOT, AND THE RETRY RIDES lot_id (R38, Finding 2). lot_receipts.lot_id is
 -- unique, so it carries the retry the way ^ref-25's migration records: no idempotency_key
@@ -58,8 +73,9 @@
 -- left Foodiva, or an opening lot. A closed lot is refused by fn_guard_lot_closed, which lets
 -- an approved, unexpired unlock through (R8/R42). See the comment above the guard.
 --
--- Covered by supabase/tests/production_test.sql (TC-13 ... TC-18) and
--- supabase/tests/receipt_state_floor_test.sql (RSF-01 ... RSF-09).
+-- Covered by supabase/tests/production_test.sql (TC-13 ... TC-18),
+-- supabase/tests/receipt_state_floor_test.sql (RSF-01 ... RSF-09) and
+-- supabase/tests/receipt_sign_line_test.sql (SL-01 ... SL-08).
 
 create or replace function public.fn_record_lot_receipt(
   p_idempotency_key      uuid,
@@ -83,6 +99,8 @@ declare
   v_pct       numeric;
   v_verdict   text;
   v_id        uuid;
+  v_unsigned  uuid[];
+  v_trucks    bigint;
 begin
   if p_idempotency_key is null then
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
@@ -159,6 +177,26 @@ begin
     raise exception 'VARIANCE_REASON_REQUIRED: % kg received against % kg dispatched is %%% off, past a tolerance of %%% (CM 02, BR12)',
       p_received_weight_kg, v_lot.foodiva_sent_weight_kg,
       coalesce(v_pct::text, 'an unmeasurable'), v_threshold;
+  end if;
+
+  ---------------------------------------------------------- the truck (^fix-cm02-sign-line)
+  -- Under the lot lock taken above, so two phones on one lot cannot both find it unsigned.
+  if v_lot.state < 'LOT_CLOSED' then
+    select array_agg(tl.id) filter (where tl.receipt_idempotency_key is null), count(*)
+      into v_unsigned, v_trucks
+      from transport_lines tl
+      join transport_runs tr on tr.id = tl.run_id
+     where tl.lot_id = p_lot_id
+       and tr.route = 'FOODIVA_TO_CM';
+
+    if v_unsigned is not null then
+      if v_trucks > 1 then
+        raise exception 'RECEIPT_LINE_AMBIGUOUS: lot % came on % Foodiva -> CM trucks, and CM 02 has one weight for the lot',
+          v_lot.lot_code, v_trucks;
+      end if;
+      perform fn_confirm_transport_receipt(p_idempotency_key, v_unsigned[1], p_event_date,
+                                           p_received_weight_kg, v_reason);
+    end if;
   end if;
 
   insert into lot_receipts (lot_id, event_date, received_weight_kg, post_drain_weight_kg,

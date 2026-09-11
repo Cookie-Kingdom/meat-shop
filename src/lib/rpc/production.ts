@@ -38,7 +38,7 @@ const MESSAGES: Record<string, string> = {
   CONFIG_NOT_SET:
     "Owner ยังไม่ได้ตั้งค่าที่ขั้นตอนนี้ต้องใช้ — แจ้ง Owner ให้ตั้งค่าก่อน แล้วค่อยบันทึกใหม่",
 
-  // CM 02 / CM 03 — fn_record_lot_receipt
+  // CM 02 / CM 03 — fn_record_lot_receipt, and the truck it signs (fn_confirm_transport_receipt)
   RECEIPT_EVENT_DATE_REQUIRED: "ต้องระบุวันที่รับเนื้อ",
   RECEIPT_WEIGHT_INVALID: "น้ำหนักรับต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป",
   POST_DRAIN_WEIGHT_INVALID: "น้ำหนักก่อนสโมคต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป",
@@ -46,6 +46,10 @@ const MESSAGES: Record<string, string> = {
     "น้ำหนักก่อนสโมคเกินน้ำหนักที่รับเข้ามา — ชั่งใหม่ หรือแก้น้ำหนักรับก่อน",
   VARIANCE_REASON_REQUIRED:
     "น้ำหนักรับต่างจากที่ Foodiva ส่งเกินเกณฑ์ที่ Owner ตั้งไว้ — ใส่เหตุผลแล้วกดบันทึกอีกครั้ง",
+  PARTIAL_RECEIPT_NOT_ALLOWED:
+    "Owner ตั้งไว้ไม่ให้รับของไม่ครบ — น้ำหนักรับน้อยกว่าที่ Foodiva ส่ง แจ้ง Owner ก่อนบันทึก",
+  RECEIPT_LINE_AMBIGUOUS:
+    "Lot นี้มาจาก Foodiva มากกว่าหนึ่งเที่ยวรถ บันทึกน้ำหนักรวมครั้งเดียวไม่ได้ — แจ้ง Owner",
 
   // CM 04 top half — fn_upsert_smoke_daily_log
   LOG_EVENT_DATE_REQUIRED: "ต้องระบุวันที่รมควัน",
@@ -106,7 +110,9 @@ function toResult(error: { message: string } | null): RpcResult {
 }
 
 /** CM 02 and CM 03 — one row, two visits (R38: `lot_id` is unique and carries the retry).
- * A null post-drain or reason falls back to what is on the row. */
+ * A null post-drain or reason falls back to what is on the row. The first save also signs the
+ * lot's Foodiva → CM truck, in the same transaction (^fix-cm02-sign-line), so the action needs
+ * no second RPC. */
 export async function recordLotReceipt(args: {
   idempotencyKey: string;
   lotId: string;
