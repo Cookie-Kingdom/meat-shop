@@ -33,11 +33,13 @@ import {
 const ISO_DATE = /\d{4}-\d{2}-\d{2}/g;
 
 /** The ISO dates a raise names, in Thai, in the order it named them. */
-function datesIn(raw: string): string[] {
+export function datesIn(raw: string): string[] {
   return (raw.match(ISO_DATE) ?? []).map(thaiDate);
 }
 
-const MESSAGES: Messages = {
+/* Exported since ^ref-46: sales.ts and materials.ts start from these (the preamble, the day)
+ * and override the few that read differently on their screens. */
+export const MESSAGES: Messages = {
   IDEMPOTENCY_KEY_REQUIRED: "คำสั่งบันทึกไม่สมบูรณ์ — โหลดหน้านี้ใหม่แล้วลองอีกครั้ง",
   IDEMPOTENCY_KEY_REUSED:
     "คำสั่งนี้ถูกใช้กับรายการอื่นไปแล้ว — โหลดหน้านี้ใหม่แล้วลองอีกครั้ง",

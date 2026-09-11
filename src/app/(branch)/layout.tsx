@@ -24,6 +24,8 @@ export default async function BranchLayout({
         <Link href="/branch" className={actionLink}>งานวันนี้</Link>
         <Link href="/branch/receive" className={actionLink}>รับเนื้อเข้าสาขา</Link>
         <Link href="/branch/thaw" className={actionLink}>แบ่งละลายเนื้อ</Link>
+        <Link href="/branch/close" className={actionLink}>ปิดยอดรายวัน</Link>
+        <Link href="/branch/close/confirm" className={actionLink}>ยืนยันปิดวัน</Link>
       </nav>
       {children}
     </RoleShell>
