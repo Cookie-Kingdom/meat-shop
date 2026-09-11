@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { actionLink } from "@/components/ui/controls";
 import { readDiff } from "@/features/branch-close/queries";
+import { readMaterials, readRiceDay } from "@/features/materials/queries";
 import { submitOpenDay } from "@/features/branch/actions";
 import { BranchHeading } from "@/features/branch/components/branch-heading";
 import {
@@ -25,8 +26,10 @@ import { one } from "@/lib/params";
  *   แบ่งละลายเนื้อ       thawed_kg > 0 for the date               (v_daily_reports)
  *   ปิดยอดรายวัน       the day's Diff is zero, or the day is closed (v_branch_diff)   (^ref-46)
  *   ยืนยันปิดวัน        status = CLOSED                           (v_daily_reports)  (^ref-46)
- * BR 03 and BR 08 render disabled until their card lands. BR 04 is not listed: it is Phase 2
- * (v0.2:114).
+ *   ข้าวเหนียวช่วงเช้า   the day's rice row has its morning figure  (v_rice_day)        (^ref-52)
+ *   เช็ควัสดุ          every material counted today, and the evening rice
+ *                    (v_material_alerts, v_rice_day)                             (^ref-52)
+ * BR 04 is not listed: it is Phase 2 (v0.2:114).
  *
  * THE ROLE GATE IS NOT HERE. Every view carries its role test in its WHERE (R34); the (branch)
  * layout's requireRole is the mirror. The morning group is three items, so it sits above the
@@ -41,14 +44,20 @@ export default async function BranchToday(props: PageProps<"/branch">) {
   const branch = day.branch;
   if (!branch) return <NoBranch error={day.error} />;
 
-  const [{ count: outstanding }, { row: diff }] = await Promise.all([
+  const [{ count: outstanding }, { row: diff }, materials, { row: rice }] = await Promise.all([
     day.supabase
       .from("v_outstanding_receipts")
       .select("line_id", { count: "exact", head: true })
       .eq("route", "CENTRAL_TO_BRANCH")
       .eq("to_location_id", branch.id),
     readDiff(day.supabase, branch.id, day.date),
+    readMaterials(day.supabase, branch.id),
+    day.report
+      ? readRiceDay(day.supabase, day.report.id)
+      : Promise.resolve({ row: null, error: null }),
   ]);
+  const riceModel = rice?.model ?? branch.rice_model;
+  const countedToday = materials.rows.filter((m) => m.counted_on === day.date).length;
 
   /* One key per page view (PLAN T8): a double tap on เปิดวัน is a replay, and the redirect after
    * it renders a fresh key. */
@@ -131,8 +140,14 @@ export default async function BranchToday(props: PageProps<"/branch">) {
           />
           <ChecklistItem
             label="ข้าวเหนียวช่วงเช้า"
-            disabled
-            detail="ยังไม่เปิดใช้งาน"
+            href={`/branch/rice?${here}`}
+            done={rice?.cooked_received_kg != null || rice?.cooked_today_kg != null}
+            blocked={report ? undefined : "เปิดวันก่อน"}
+            detail={
+              riceModel === null
+                ? "ยังไม่ได้ตั้งรูปแบบข้าว"
+                : `ยกมา ${rice?.carried_in_cooked_kg == null ? "ยังไม่มีข้อมูล" : `${formatKg(rice.carried_in_cooked_kg)} กก.`}`
+            }
           />
         </section>
 
@@ -164,7 +179,16 @@ export default async function BranchToday(props: PageProps<"/branch">) {
             blocked={report ? undefined : "เปิดวันก่อน"}
             detail={diff ? `Diff ${formatKg(diff.diff_kg)} กก.` : "ยังไม่มีเนื้อพร้อมขายเข้าออก"}
           />
-          <ChecklistItem label="เช็ควัสดุ" disabled detail="ยังไม่เปิดใช้งาน" />
+          <ChecklistItem
+            label="เช็ควัสดุ"
+            href={`/branch/count?${here}`}
+            done={
+              countedToday === materials.rows.length &&
+              (riceModel === null || rice?.cooked_remaining_kg != null)
+            }
+            blocked={report ? undefined : "เปิดวันก่อน"}
+            detail={`นับวัสดุแล้ว ${countedToday}/${materials.rows.length} · ข้าวเย็น ${rice?.cooked_remaining_kg == null ? "ยังไม่บันทึก" : `${formatKg(rice.cooked_remaining_kg)} กก.`}`}
+          />
           <ChecklistItem
             label="ยืนยันปิดวัน"
             href={`/branch/close/confirm?${here}`}

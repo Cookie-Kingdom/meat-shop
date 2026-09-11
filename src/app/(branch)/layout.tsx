@@ -26,6 +26,8 @@ export default async function BranchLayout({
         <Link href="/branch/thaw" className={actionLink}>แบ่งละลายเนื้อ</Link>
         <Link href="/branch/close" className={actionLink}>ปิดยอดรายวัน</Link>
         <Link href="/branch/close/confirm" className={actionLink}>ยืนยันปิดวัน</Link>
+        <Link href="/branch/rice" className={actionLink}>ข้าวเหนียว</Link>
+        <Link href="/branch/count" className={actionLink}>เช็ควัสดุ</Link>
       </nav>
       {children}
     </RoleShell>

@@ -1,7 +1,13 @@
 import Link from "next/link";
 
+import { MoneyField } from "@/components/shared/decimal-field";
 import { actionLink, control, Field } from "@/components/ui/controls";
 import { submitSales, submitWaste } from "@/features/branch-close/actions";
+import { submitExpense } from "@/features/materials/actions";
+import { KgField } from "@/features/materials/components/fields";
+import { readExpenses } from "@/features/materials/queries";
+import { thb } from "@/lib/format/number";
+import { EXPENSE_CATEGORIES, EXPENSE_LABEL } from "@/lib/rpc/materials";
 import { ClosedDayNotice } from "@/features/branch-close/components/closed-day-notice";
 import { DiffPanel } from "@/features/branch-close/components/diff-panel";
 import { readDiff, readReadyLots } from "@/features/branch-close/queries";
@@ -36,7 +42,9 @@ import { one } from "@/lib/params";
  *
  * WASTE is READY smoked meat only, one lot per submit, weight typed (Finding 5).
  *
- * TWO FORMS, TWO KEYS, one per page view (Finding 6). A CLOSED day keeps both forms under
+ * BRANCH EXPENSES (^ref-52): the saved list from v_branch_expenses, then one row per submit.
+ *
+ * THREE FORMS, THREE KEYS, one per page view (Finding 6). A CLOSED day keeps every form under
  * ClosedDayNotice; REPORT_CLOSED decides (Finding 8). */
 
 export default async function BranchClose(props: PageProps<"/branch/close">) {
@@ -49,9 +57,12 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
   if (!branch) return <NoBranch error={day.error} />;
   const report = day.report;
 
-  const [ready, diff] = await Promise.all([
+  const [ready, diff, expenses] = await Promise.all([
     readReadyLots(day.supabase, branch.id),
     readDiff(day.supabase, branch.id, day.date),
+    report
+      ? readExpenses(day.supabase, report.id)
+      : Promise.resolve({ rows: [], error: null }),
   ]);
   const lots = ready.rows;
 
@@ -62,6 +73,7 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
   const kept = (name: string) => one(params[name]);
   const salesKey = crypto.randomUUID();
   const wasteKey = crypto.randomUUID();
+  const expenseKey = crypto.randomUUID();
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,6 +93,7 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
 
       {saved === "sales" ? <Notice tone="success">บันทึกยอดขายแล้ว</Notice> : null}
       {saved === "waste" ? <Notice tone="success">บันทึก Waste แล้ว</Notice> : null}
+      {saved === "expense" ? <Notice tone="success">บันทึกค่าใช้จ่ายแล้ว</Notice> : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {ready.error || diff.error ? (
         <Notice tone="danger">
@@ -176,19 +189,7 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
                 unit="หลอด"
                 defaultValue={kept("chilli")}
               />
-              <Field label="ข้าวเหนียว">
-                <span className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    name="rice"
-                    defaultValue={kept("rice")}
-                    className={`${control} h-12 font-mono text-num-md tabular-nums`}
-                  />
-                  <span className="text-body text-text-secondary">กก.</span>
-                </span>
-              </Field>
+              <KgField label="ข้าวเหนียว" name="rice" defaultValue={kept("rice")} />
               <CountField
                 label="น้ำเปล่า"
                 name="water"
@@ -264,6 +265,88 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
               </>
             )}
           </form>
+
+          {/* Branch expenses (^ref-52, PLAN-material-screens Findings 8–9). The list is
+              v_branch_expenses, so a saved expense is visible before anyone types it twice. The
+              picker sends the CODE; PACKAGING is the one lane K's cost split reads. */}
+          <section
+            id="expense"
+            aria-labelledby="br07-expense"
+            className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4"
+          >
+            <h2 id="br07-expense" className="text-h3 text-text-primary">
+              ค่าใช้จ่ายสาขา
+            </h2>
+            {expenses.error ? (
+              <Notice tone="danger">อ่านค่าใช้จ่ายไม่สำเร็จ — {expenses.error}</Notice>
+            ) : expenses.rows.length === 0 ? (
+              <p className="text-body-sm text-text-secondary">วันนี้ยังไม่มีค่าใช้จ่าย</p>
+            ) : (
+              <ul className="flex flex-col">
+                {expenses.rows.map((e) => (
+                  <li
+                    key={e.branch_expense_id}
+                    className="flex items-start justify-between gap-3 border-b border-border py-2 last:border-b-0"
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span className="break-words text-body text-text-primary">
+                        {EXPENSE_LABEL[e.category] ?? e.category}
+                        {e.detail ? ` · ${e.detail}` : ""}
+                      </span>
+                      <span className="text-caption text-text-muted">
+                        ผู้สำรองจ่าย {e.paid_by_person}
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-mono tabular-nums text-text-primary">
+                      {thb(e.amount_thb)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={submitExpense} className="flex flex-col gap-3">
+              <input type="hidden" name="idempotency_key" value={expenseKey} />
+              <input type="hidden" name="daily_report_id" value={report.id} />
+              <input type="hidden" name="back" value={back} />
+              <Field label="ประเภท">
+                <select
+                  name="exp_category"
+                  required
+                  defaultValue={kept("exp_category")}
+                  className={control}
+                >
+                  <option value="" disabled>
+                    เลือกประเภท
+                  </option>
+                  {EXPENSE_CATEGORIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <MoneyField label="จำนวนเงิน" name="exp_amount" defaultValue={kept("exp_amount")} />
+              <Field label="ผู้สำรองจ่าย">
+                <input
+                  type="text"
+                  name="exp_paid_by"
+                  autoComplete="name"
+                  defaultValue={kept("exp_paid_by")}
+                  className={control}
+                />
+              </Field>
+              <Field label="รายละเอียด (ถ้ามี)">
+                <input
+                  type="text"
+                  name="exp_detail"
+                  autoComplete="off"
+                  defaultValue={kept("exp_detail")}
+                  className={control}
+                />
+              </Field>
+              <SubmitButton>บันทึกค่าใช้จ่าย</SubmitButton>
+            </form>
+          </section>
 
           <BottomActionBar>
             <Link href={`/branch/close/confirm?${here}`} className={writeButton}>
