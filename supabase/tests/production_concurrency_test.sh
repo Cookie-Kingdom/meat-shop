@@ -67,7 +67,7 @@ insert into profiles (id, display_name, role, is_active) values
   ('$OP',    'ผู้ปฏิบัติงานทดสอบพร้อมกัน', 'L3_CM_OPERATOR', true);
 insert into locations (code, name_th, kind) values ('CH9', 'โรงรมทดสอบ', 'CHEF_HOUSE');
 insert into user_locations (profile_id, location_id) values ('$OP', (select id from locations));
-insert into suppliers (name) values ('ฟู้ดดีว่าทดสอบ');
+insert into suppliers (name) values ('Foodiva ทดสอบ');
 
 select set_config('request.jwt.claims', '{"sub":"$OWNER"}', false);
 select fn_set_config(gen_random_uuid(), 'yield_alert_threshold_pct', current_date - 30,

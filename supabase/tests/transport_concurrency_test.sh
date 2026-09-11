@@ -91,7 +91,7 @@ insert into profiles (id, display_name, role, is_active)
 -- ^ref-35, a can_receive_central delegate) and one profile then plays both racers.
 insert into locations (code, name_th, kind) values ('CH9', 'โรงรมทดสอบ', 'CHEF_HOUSE');
 insert into locations (code, name_th, kind) values ('CEN', 'คลังกลางทดสอบ', 'CENTRAL');
-insert into suppliers (name) values ('ฟู้ดดีว่าทดสอบ');
+insert into suppliers (name) values ('Foodiva ทดสอบ');
 select set_config('request.jwt.claims', '{"sub":"$OWNER"}', false);
 
 select fn_set_config(gen_random_uuid(), 'freight_alloc_method', current_date - 30,

@@ -74,7 +74,7 @@ begin
   insert into locations (code, name_th, kind) values ('K58-B2', 'สาขาสอง', 'BRANCH')
     returning id into v_b2;
   insert into user_locations (profile_id, location_id) values (v_l2a, v_b1), (v_l3, v_chef);
-  insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva') returning id into v_sup;
 
   select id into v_box  from products where code = 'MEAT_BOX';
   select id into v_rice from products where code = 'RICE_KG';
@@ -257,7 +257,7 @@ begin
   assert v_row.lot_id = v_y2 and v_row.lot_code = (select lot_code from lots where id = v_y2)
      and v_row.smoke_date = date '2026-08-18' and v_row.smoke_date_group_id = v_gY2
      and v_row.po_number = (select po_number from purchase_orders where id = v_po)
-     and v_row.supplier_name = 'ฟู้ดดีว่า' and not v_row.is_opening
+     and v_row.supplier_name = 'Foodiva' and not v_row.is_opening
      and v_row.sold_qty = 20 and v_row.pack_weight_kg = 0.25 and v_row.business_date = v_d,
     format('TC-41: the Y2 line traces to lot %s, smoked %s, PO %s, supplier %s',
            v_row.lot_code, v_row.smoke_date, v_row.po_number, v_row.supplier_name);

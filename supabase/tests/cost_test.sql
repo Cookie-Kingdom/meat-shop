@@ -68,7 +68,7 @@ begin
   insert into locations (code, name_th, kind) values ('BR32', 'สาขาทดสอบ', 'BRANCH')
     returning id into v_branch;
   insert into user_locations (profile_id, location_id) values (v_l3, v_chef), (v_l2, v_branch);
-  insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva') returning id into v_sup;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   perform fn_set_config(gen_random_uuid(), 'receipt_variance_threshold_pct', date '2026-01-01',

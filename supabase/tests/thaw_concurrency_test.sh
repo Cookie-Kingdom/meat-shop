@@ -68,7 +68,7 @@ insert into locations (code, name_th, kind) values ('CEN', 'คลังกล�
 insert into locations (code, name_th, kind) values ('BRA', 'สาขาทดสอบ', 'BRANCH');
 insert into user_locations (profile_id, location_id)
      values ('$L2', (select id from locations where kind = 'BRANCH'));
-insert into suppliers (name) values ('ฟู้ดดีว่าทดสอบ');
+insert into suppliers (name) values ('Foodiva ทดสอบ');
 select set_config('request.jwt.claims', '{"sub":"$OWNER"}', false);
 select fn_set_config(gen_random_uuid(), 'freight_alloc_method', current_date - 30, p_value_text => 'BY_LOT_WEIGHT');
 select fn_set_config(gen_random_uuid(), 'receipt_variance_threshold_pct', current_date - 30, p_value_numeric => 20.00);

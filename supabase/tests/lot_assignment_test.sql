@@ -54,7 +54,7 @@ begin
   insert into user_locations (profile_id, location_id) values
     (v_l3, v_chef), (v_l3c, v_chef), (v_l3_x, v_chef), (v_l3b, v_chef2), (v_l2, v_branch);
 
-  insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva') returning id into v_sup;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   v_po   := fn_create_po(gen_random_uuid(), v_sup, v_day, 1000.00, 250.00);

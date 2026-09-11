@@ -48,7 +48,7 @@ begin
   insert into locations (code, name_th, kind) values ('RSF1', 'โรงรมทดสอบ', 'CHEF_HOUSE')
     returning id into v_chef;
   insert into user_locations (profile_id, location_id) values (v_l3, v_chef);
-  insert into suppliers (name) values ('ฟู้ดดีว่า RSF') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva RSF') returning id into v_sup;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   perform fn_set_config(gen_random_uuid(), 'receipt_variance_threshold_pct', date '2026-01-01',
