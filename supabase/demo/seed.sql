@@ -33,8 +33,6 @@ declare
   v_lotC    uuid;
   v_run     uuid;
   v_line    uuid;
-  v_lineA   uuid;
-  v_lineB   uuid;
   v_gA      uuid;
   v_id      uuid;
 begin
@@ -116,26 +114,23 @@ begin
   perform fn_assign_lot_operator(gen_random_uuid(), l, v_chef)
      from unnest(array[v_lotA, v_lotB, v_lotC]) l;
 
-  -- One truck per lot, Foodiva to Chiang Mai. The line ids are kept: the chef signs for A and B.
-  v_run   := fn_create_transport_run(gen_random_uuid(), 'FOODIVA_TO_CM', d - 10, 'รถกระบะ', false, 4500.00);
-  v_lineA := fn_dispatch_transport_line(gen_random_uuid(), v_run, v_lotA, null, null, v_cm, 100.00);
-  v_run   := fn_create_transport_run(gen_random_uuid(), 'FOODIVA_TO_CM', d - 5, 'รถกระบะ', false, 4500.00);
-  v_lineB := fn_dispatch_transport_line(gen_random_uuid(), v_run, v_lotB, null, null, v_cm, 100.00);
+  -- One truck per lot, Foodiva to Chiang Mai.
+  v_run := fn_create_transport_run(gen_random_uuid(), 'FOODIVA_TO_CM', d - 10, 'รถกระบะ', false, 4500.00);
+  perform fn_dispatch_transport_line(gen_random_uuid(), v_run, v_lotA, null, null, v_cm, 100.00);
+  v_run := fn_create_transport_run(gen_random_uuid(), 'FOODIVA_TO_CM', d - 5, 'รถกระบะ', false, 4500.00);
+  perform fn_dispatch_transport_line(gen_random_uuid(), v_run, v_lotB, null, null, v_cm, 100.00);
   v_run := fn_create_transport_run(gen_random_uuid(), 'FOODIVA_TO_CM', d - 1, 'รถกระบะ', false, 4500.00);
   perform fn_dispatch_transport_line(gen_random_uuid(), v_run, v_lotC, null, null, v_cm, 100.00);
 
   ------------------------------------------------------------ the chef house, as the chef
   perform set_config('request.jwt.claims', json_build_object('sub', v_chef)::text, true);
 
-  -- A truck arriving at Chiang Mai is two writes by the chef (^fix-demo-seed D3): sign the
-  -- transport line, which moves the meat IN_TRANSIT -> FROZEN at the chef house and takes it
-  -- off OW 02's ค้างรับ, then CM 02's measurement, which posts nothing (fn_record_lot_receipt
-  -- header, TC-14). The real CM 02 does only the second — card ^fix-cm02-sign-line.
+  -- CM 02 signs the truck and records the measurement in one call (^fix-cm02-sign-line): the
+  -- meat moves IN_TRANSIT -> FROZEN at the chef house and leaves OW 02's ค้างรับ.
   -- ponytail: the full 100.00 arrives. A short receipt stays in ค้างรับ as a partial until D06
-  -- settlement closes it, and nothing writes that settlement yet; use 98.00 once something does.
+  -- settlement closes it (^fix-receipt-settlement); use 98.00 once something does.
 
   -- Lot A: received, smoked in one day, bagged, closed.
-  perform fn_confirm_transport_receipt(gen_random_uuid(), v_lineA, d - 9, 100.00);
   perform fn_record_lot_receipt(gen_random_uuid(), v_lotA, d - 9, 100.00, 96.50);
   perform fn_upsert_smoke_daily_log(gen_random_uuid(), v_lotA, d - 9,
     jsonb_build_array(jsonb_build_object('lot_id', v_lotA, 'input_weight_kg', 96.50)));
@@ -145,7 +140,6 @@ begin
 
   -- Lot B: received, three days logged, still smoking. 80.00 of 96.50 kg logged, so 16.50 kg
   -- is left for the guide's first chef task (D2).
-  perform fn_confirm_transport_receipt(gen_random_uuid(), v_lineB, d - 4, 100.00);
   perform fn_record_lot_receipt(gen_random_uuid(), v_lotB, d - 4, 100.00, 96.50);
   perform fn_upsert_smoke_daily_log(gen_random_uuid(), v_lotB, d - 4,
     jsonb_build_array(jsonb_build_object('lot_id', v_lotB, 'input_weight_kg', 30.00)));
