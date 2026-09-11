@@ -31,6 +31,21 @@ begin
   select count(*) into v_n from user_locations where can_receive_central;
   assert v_n = 0, format('DS-08: %s central-receiver delegate(s); the Owner receives (D9)', v_n);
 
+  -- ^fix-demo-seed D3: the chef signed lot B's truck, so its raw weight sits FROZEN at the
+  -- chef house on (lot, group = null) — what fn_close_lot will move onto the groups.
+  select coalesce(sum(l.qty_delta), 0) into v_kg
+    from stock_ledger l join locations x on x.id = l.location_id
+   where l.lot_id = v_lotB and x.kind = 'CHEF_HOUSE'
+     and l.stock_state = 'FROZEN' and l.smoke_date_group_id is null;
+  assert v_kg = 100.00, format('DS-09: lot B holds %s kg raw at the chef house, expected 100.00', v_kg);
+
+  -- ^fix-demo-seed D2: something is left to smoke, or the guide's first chef task is impossible.
+  select r.post_drain_weight_kg
+         - (select coalesce(sum(input_weight_kg), 0) from smoke_daily_log_sources where lot_id = v_lotB)
+    into v_kg
+    from lot_receipts r where r.lot_id = v_lotB;
+  assert v_kg > 0, format('DS-10: lot B has %s kg left to smoke; it needs some', v_kg);
+
   -- Every view that carries a money, yield or loss column. Found by name rather than listed,
   -- so a view added later is covered without editing this file.
   select array_agg(distinct table_name) into v_priced
@@ -54,6 +69,11 @@ begin
   select string_agg(state::text, ',' order by lot_date) into v_txt
     from v_operator_lots where lot_id in (v_lotB, v_lotC);
   assert v_txt = 'SMOKING,IN_TRANSIT', format('DS-06: lots B and C read %s', v_txt);
+
+  -- ^fix-demo-seed D3: OW 02 ค้างรับ shows the truck still on the road (C) and nothing signed for.
+  select string_agg(lot_id::text, ',') into v_txt
+    from v_outstanding_receipts where route = 'FOODIVA_TO_CM';
+  assert v_txt = v_lotC::text, format('DS-11: Foodiva -> CM lines outstanding: %s, expected lot C only', v_txt);
 
   ------------------------------------------------------------------------------- chef
   perform set_config('request.jwt.claims', json_build_object('sub', v_chef)::text, true);

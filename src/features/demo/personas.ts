@@ -1,8 +1,7 @@
 /* Card ^ref-65 — the demo's four personas and its one guard. The table holds no password:
  * every persona signs in with DEMO_USER_PASSWORD, which only the server reads (D2). */
 
-/* `sees` and `first` are the picker's two hint lines (^ref-67), lifted from DEMO-GUIDE.md.
- * The chef's first task is lot C, not lot B: the seed leaves lot B nothing to smoke. */
+/* `sees` and `first` are the picker's two hint lines (^ref-67), lifted from DEMO-GUIDE.md. */
 export const DEMO_PERSONAS = {
   owner: {
     email: "demo-owner@demo.local",
@@ -14,7 +13,7 @@ export const DEMO_PERSONAS = {
     email: "demo-chef@demo.local",
     name: "เชฟเฮาส์ เชียงใหม่",
     sees: "เห็นเฉพาะล็อตที่เชียงใหม่ ไม่เห็นราคาหรือ % yield",
-    first: "บันทึกรับล็อต C ที่เพิ่งมาถึง",
+    first: "บันทึกรมควันวันถัดไปของล็อต B",
   },
   salaeng: {
     email: "demo-salaeng@demo.local",
