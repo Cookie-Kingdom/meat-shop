@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AlertBanner } from "@/features/production/components/alert-banner";
+import { ReadError } from "@/components/shared/read-error";
 import { EmptyState } from "@/features/production/components/empty-state";
 import { LotList } from "@/features/production/components/lot-list";
 import { readMyLots } from "@/features/production/queries";
@@ -31,12 +31,11 @@ export default async function MyLots() {
       <h1 className="text-h1 text-text-primary">งานของฉัน</h1>
 
       {error ? (
-        <AlertBanner tone="danger" title="อ่านรายการ Lot ไม่สำเร็จ">
-          {error}{" "}
+        <ReadError title="อ่านรายการ Lot ไม่สำเร็จ" raw={error}>
           <Link href="/cm" className="text-accent underline">
             ลองอีกครั้ง
           </Link>
-        </AlertBanner>
+        </ReadError>
       ) : open.length === 0 ? (
         <EmptyState
           title="ยังไม่มี Lot ที่ต้องทำ"

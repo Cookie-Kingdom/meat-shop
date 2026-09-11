@@ -11,6 +11,7 @@ import { thaiDate, todayBangkok } from "@/lib/format/date";
 import { dp2, kg } from "@/lib/format/number";
 import { one } from "@/lib/params";
 import { readTrace } from "@/lib/rpc/reports";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 08 trace — sale date → smoke-date group → lot → PO → supplier (F13, BR18; PLAN K22). One
  * row per meat sales line from 232. `?date=` narrows to one day (the P&L table and the Diff
@@ -101,9 +102,7 @@ export default async function TracePage(
         ขาย → วันรมควัน → ล็อต → PO → ผู้ขาย
       </p>
       {res.error ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านข้อมูลไม่สำเร็จ — {res.error}
-        </p>
+        <ReadError title="อ่านข้อมูลไม่สำเร็จ" raw={res.error} />
       ) : (
         <ResponsiveTable
           columns={columns}

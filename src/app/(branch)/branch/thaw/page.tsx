@@ -12,6 +12,7 @@ import { SubmitButton } from "@/features/branch/components/submit-button";
 import { loadBranchDay } from "@/features/branch/context";
 import { thaiDate } from "@/lib/format/date";
 import { one } from "@/lib/params";
+import { ReadError } from "@/components/shared/read-error";
 
 /* BR 05 แบ่งละลายเนื้อ — FROZEN -> READY against a named lot (card ^ref-41, PLAN T9, S2).
  *
@@ -140,9 +141,10 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
       ) : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {frozenRes.error ? (
-        <Notice tone="danger">
-          อ่านสต็อกแช่แข็งไม่สำเร็จ — {frozenRes.error.message}
-        </Notice>
+        <ReadError
+          title="อ่านสต็อกแช่แข็งไม่สำเร็จ"
+          raw={frozenRes.error.message}
+        />
       ) : null}
 
       {report?.status === "CLOSED" ? (

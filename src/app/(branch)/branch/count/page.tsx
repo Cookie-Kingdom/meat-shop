@@ -17,6 +17,7 @@ import {
 } from "@/features/materials/queries";
 import { thaiDate } from "@/lib/format/date";
 import { one } from "@/lib/params";
+import { ReadError } from "@/components/shared/read-error";
 
 /* BR 08 เช็ควัสดุ — the card's "one phone screen" (card ^ref-52, PLAN-material-screens.md
  * Findings 1–5; skeleton S5). Three kinds of count on it:
@@ -128,9 +129,10 @@ export default async function BranchCount(props: PageProps<"/branch/count">) {
         </Notice>
       ) : null}
       {materials.error || rice.error ? (
-        <Notice tone="danger">
-          อ่านข้อมูลไม่สำเร็จ — {materials.error ?? rice.error}
-        </Notice>
+        <ReadError
+          title="อ่านข้อมูลไม่สำเร็จ"
+          raw={materials.error ?? rice.error}
+        />
       ) : null}
       {report.status === "CLOSED" ? (
         <ClosedDayNotice

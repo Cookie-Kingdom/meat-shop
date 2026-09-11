@@ -28,6 +28,7 @@ import {
 } from "@/features/production/components/bottom-action-bar";
 import { thaiDate } from "@/lib/format/date";
 import { one } from "@/lib/params";
+import { ReadError } from "@/components/shared/read-error";
 
 /* BR 07 ปิดยอดรายวัน — the day's sales and the READY leftover's waste (card ^ref-46,
  * PLAN-sales.md T7, build notes PLAN-close-screens.md; skeleton S2).
@@ -105,9 +106,10 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
       ) : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {ready.error || diff.error ? (
-        <Notice tone="danger">
-          อ่านข้อมูลของวันไม่สำเร็จ — {ready.error ?? diff.error}
-        </Notice>
+        <ReadError
+          title="อ่านข้อมูลของวันไม่สำเร็จ"
+          raw={ready.error ?? diff.error}
+        />
       ) : null}
 
       {!report ? (
@@ -313,9 +315,7 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
               ค่าใช้จ่ายสาขา
             </h2>
             {expenses.error ? (
-              <Notice tone="danger">
-                อ่านค่าใช้จ่ายไม่สำเร็จ — {expenses.error}
-              </Notice>
+              <ReadError title="อ่านค่าใช้จ่ายไม่สำเร็จ" raw={expenses.error} />
             ) : expenses.rows.length === 0 ? (
               <p className="text-body-sm text-text-secondary">
                 วันนี้ยังไม่มีค่าใช้จ่าย

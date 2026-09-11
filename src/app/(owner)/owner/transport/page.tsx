@@ -25,6 +25,7 @@ import {
 import { todayBangkok } from "@/lib/format/date";
 import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 02 — ขนส่ง (card ^ref-24, F5 / M2). Route `/owner/transport`, kept exactly as
  * PLAN-transport.md T9 names it, because lane A's ^ref-37 (OW 05–07) links here.
@@ -155,9 +156,7 @@ export default async function TransportPage(
         </p>
       ) : null}
       {readError ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านข้อมูลขนส่งไม่สำเร็จ — {readError}
-        </p>
+        <ReadError title="อ่านข้อมูลขนส่งไม่สำเร็จ" raw={readError} />
       ) : null}
 
       {isNew ? (

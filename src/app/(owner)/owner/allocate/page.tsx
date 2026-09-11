@@ -5,6 +5,7 @@ import type { Branch, CentralAvailableRow } from "@/features/movement/types";
 import { todayBangkok } from "@/lib/format/date";
 import { newFormKey } from "@/lib/rpc/movement";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 07 — จัดสรรสู่สาขา (card ^ref-37), skeleton S2. v0.2:108: the inputs are the lot, the
  * branch, the weight and the bag count, with the FIFO proposal first; the result appears on
@@ -52,9 +53,7 @@ export default async function AllocatePage() {
       </p>
 
       {error ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านข้อมูลไม่สำเร็จ — {error.message}
-        </p>
+        <ReadError title="อ่านข้อมูลไม่สำเร็จ" raw={error.message} />
       ) : rows.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface p-6 text-body text-text-secondary">
           ยังไม่มีของแช่แข็งในคลังกลาง — รับของขากลับเข้าคลังที่{" "}

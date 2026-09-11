@@ -16,6 +16,7 @@ import {
 } from "@/features/unlock/components/unlock-panel";
 import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 11 — Unlock and Audit Log. The audit half is card ^ref-09, the unlock half is ^ref-08.
  * Skeleton S8: title, the unlock panel, then filter bar, table, pagination.
@@ -182,9 +183,7 @@ export default async function AuditPage(props: PageProps<"/owner/audit">) {
         </form>
 
         {error ? (
-          <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-            อ่านประวัติการแก้ไขไม่สำเร็จ — {error.message}
-          </p>
+          <ReadError title="อ่านประวัติการแก้ไขไม่สำเร็จ" raw={error.message} />
         ) : (
           <AuditLogTable entries={entries} />
         )}

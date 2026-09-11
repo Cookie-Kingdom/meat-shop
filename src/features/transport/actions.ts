@@ -24,6 +24,7 @@ import {
   tripKind,
 } from "./outbound";
 import { getRun, roundsByLotIds } from "./queries";
+import { readErrorHint } from "@/lib/read-error";
 
 /* OW 02 write path (card ^ref-24). Four actions over four existing functions; nothing here
  * writes a table.
@@ -116,7 +117,10 @@ export async function confirmOutboundRun(form: FormData) {
       `ยังไม่ได้ตั้งค่าเที่ยวสำหรับ “${vehicle}” แบบ${tripLabel(trip === "ROUND_TRIP")} ณ วันที่ ${date} — ตั้งได้ที่ ตั้งค่าระบบ → ค่าขนส่งตามประเภทรถ`,
     );
   }
-  if (rounds.error) back(`อ่านข้อมูลล็อตไม่สำเร็จ — ${rounds.error}`);
+  if (rounds.error)
+    back(
+      `อ่านข้อมูลล็อตไม่สำเร็จ: ${readErrorHint([rounds.error])} (${rounds.error})`,
+    );
   if (rounds.rows.length !== lots.length)
     back("ไม่พบบางล็อตที่เลือก — โหลดหน้าใหม่แล้วเลือกอีกครั้ง");
 

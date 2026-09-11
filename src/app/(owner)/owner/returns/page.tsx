@@ -8,6 +8,7 @@ import { todayBangkok } from "@/lib/format/date";
 import { one } from "@/lib/params";
 import { newFormKey } from "@/lib/rpc/movement";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 05 — ต้นทุนและนัดรับขากลับ (card ^ref-37), skeleton S3: a list of closed lots waiting
  * for a pickup date, and a full-screen detail whose only input is that date (BR17, UAT-23).
@@ -81,9 +82,7 @@ export default async function ReturnsPage(props: PageProps<"/owner/returns">) {
       </p>
 
       {error ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านรายการไม่สำเร็จ — {error.message}
-        </p>
+        <ReadError title="อ่านรายการไม่สำเร็จ" raw={error.message} />
       ) : rows.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface p-6 text-center text-body text-text-secondary">
           ไม่มี Lot ที่รอนัดรับขากลับ

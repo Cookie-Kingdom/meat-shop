@@ -3,7 +3,7 @@ import { ChevronLeft } from "lucide-react";
 
 import type { OperatorLot } from "@/features/production/types";
 
-import { AlertBanner } from "./alert-banner";
+import { ReadError } from "@/components/shared/read-error";
 import { EmptyState } from "./empty-state";
 import { LotStateBadge } from "./lot-state-badge";
 
@@ -63,14 +63,13 @@ export function LotUnavailable({
         งานของฉัน
       </Link>
       {error ? (
-        <AlertBanner tone="danger" title="อ่านข้อมูล Lot ไม่สำเร็จ">
-          {error}{" "}
+        <ReadError title="อ่านข้อมูล Lot ไม่สำเร็จ" raw={error}>
           {retryHref ? (
             <Link href={retryHref} className="text-accent underline">
               ลองอีกครั้ง
             </Link>
           ) : null}
-        </AlertBanner>
+        </ReadError>
       ) : (
         <EmptyState
           title="ไม่พบ Lot นี้ในงานของคุณ"

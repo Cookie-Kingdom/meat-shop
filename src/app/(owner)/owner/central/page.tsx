@@ -15,6 +15,7 @@ import { kg, parseKg, toHundredths } from "@/lib/format/weight";
 import { one } from "@/lib/params";
 import { newFormKey } from "@/lib/rpc/movement";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 06 — สต็อกกลาง (card ^ref-37). A return leg from Chiang Mai becomes central stock only
  * when somebody signs for the weight that actually arrived (BR12). The list shows the legs
@@ -210,9 +211,7 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
       </section>
 
       {error ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านรายการไม่สำเร็จ — {error.message}
-        </p>
+        <ReadError title="อ่านรายการไม่สำเร็จ" raw={error.message} />
       ) : (
         <>
           <h2 className="text-h2 text-text-primary">

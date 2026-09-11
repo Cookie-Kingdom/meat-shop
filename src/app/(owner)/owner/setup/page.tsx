@@ -13,6 +13,7 @@ import { ReadinessList } from "@/features/setup/components/readiness-list";
 import { one } from "@/lib/params";
 import { getReadiness } from "@/lib/rpc/setup";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* /owner/setup — the first-run gate (card ^ref-61, ADR-023). "The OW 10 config screen
  * filtered to what is unset": the BLOCK items first, then WARN, then the values v0.2 already
@@ -115,9 +116,7 @@ export default async function SetupPage(props: PageProps<"/owner/setup">) {
         </p>
       ) : null}
       {readError ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-3 text-body-sm text-danger">
-          อ่านสถานะการตั้งค่าไม่สำเร็จ — {readError}
-        </p>
+        <ReadError title="อ่านสถานะการตั้งค่าไม่สำเร็จ" raw={readError} />
       ) : null}
 
       {/* OW 10's own sheets, returning here. `?set=1` picks an item; `?set=SOURCE:key:scope`
