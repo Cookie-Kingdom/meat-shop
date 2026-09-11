@@ -21,17 +21,17 @@ import { createClient } from "@/lib/supabase/server";
  */
 
 export type RpcResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; code: string; message: string };
+  { ok: true; data: T } | { ok: false; code: string; message: string };
 
 const MESSAGES: Record<string, string> = {
-  IDEMPOTENCY_KEY_REQUIRED: "คำสั่งบันทึกไม่สมบูรณ์ กรุณาเปิดหน้านี้ใหม่แล้วลองอีกครั้ง",
+  IDEMPOTENCY_KEY_REQUIRED:
+    "คำสั่งบันทึกไม่สมบูรณ์ กรุณาเปิดหน้านี้ใหม่แล้วลองอีกครั้ง",
   FORBIDDEN:
-    "บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้ — ผู้ยืนยันรับของต้องเป็นผู้ดูแลปลายทาง (ADR-004)",
+    "บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้ — ผู้ยืนยันรับของต้องเป็นผู้ดูแลปลายทาง",
   FORBIDDEN_LOCATION: "บัญชีนี้ไม่ได้ดูแลสถานที่ปลายทางของรายการนี้",
   NO_ACTOR: "บัญชีนี้ถูกปิดใช้งานแล้ว",
   CONFIG_NOT_SET:
-    "ยังไม่ได้ตั้งค่าที่รายการนี้ต้องใช้ ณ วันที่นี้ — ตั้งได้ที่หน้าตั้งค่าระบบ ระบบไม่เดาค่าให้ (ADR-023)",
+    "ยังไม่ได้ตั้งค่าที่รายการนี้ต้องใช้ ณ วันที่นี้ — ตั้งได้ที่หน้าตั้งค่าระบบ ระบบไม่เดาค่าให้",
   CONFIG_WRONG_TYPE:
     "วิธีเฉลี่ยค่าขนส่งในการตั้งค่าบันทึกผิดชนิด — ต้องเป็นข้อความ BY_LOT_WEIGHT, EQUAL_SPLIT หรือ MANUAL",
   CONFIG_VALUE_INVALID:
@@ -41,11 +41,11 @@ const MESSAGES: Record<string, string> = {
   RUN_FARE_INVALID: "ค่าเที่ยวรถต้องไม่ติดลบ",
   RUN_IDEMPOTENCY_CONFLICT:
     "คำสั่งนี้สร้างรอบรถไปแล้วด้วยข้อมูลชุดก่อนหน้า — ตรวจรายการรอบรถด้านล่างก่อนสร้างใหม่ ระบบไม่สร้างซ้ำ",
-  BRANCH_LEG_NOT_FREE: "รถส่งสาขาไม่มีค่าขนส่ง (R25, BR11)",
-  RETURN_LOTS_REQUIRED: "รถขากลับต้องระบุล็อตที่จะรับ (BR17)",
-  RETURN_NOT_SCHEDULED: "มีล็อตที่ยังไม่ได้นัดวันรับขากลับ (BR17)",
+  BRANCH_LEG_NOT_FREE: "รถส่งสาขาไม่มีค่าขนส่ง",
+  RETURN_LOTS_REQUIRED: "รถขากลับต้องระบุล็อตที่จะรับ",
+  RETURN_NOT_SCHEDULED: "มีล็อตที่ยังไม่ได้นัดวันรับขากลับ",
   LOT_NOT_FOUND: "ไม่พบล็อตนี้",
-  LOT_REQUIRED: "ทุกการขนส่งเนื้อต้องระบุล็อต (R21)",
+  LOT_REQUIRED: "ทุกการขนส่งเนื้อต้องระบุล็อต",
   DISPATCH_WEIGHT_INVALID: "น้ำหนักที่ส่งต้องมากกว่า 0 กก.",
   LINE_IDEMPOTENCY_CONFLICT:
     "คำสั่งนี้ใส่ล็อตขึ้นรถไปแล้วด้วยข้อมูลชุดก่อนหน้า — ตรวจรอบรถก่อนทำซ้ำ ระบบไม่ส่งซ้ำ",
@@ -55,23 +55,21 @@ const MESSAGES: Record<string, string> = {
   ORIGIN_LOCATION_INVALID:
     "รถขาไปจาก Foodiva ไม่มีต้นทางในระบบ — Foodiva เป็นผู้ขาย ไม่ใช่สถานที่ของเรา",
   ORIGIN_REQUIRED: "ต้องระบุต้นทาง",
-  INSUFFICIENT_STOCK: "สต็อกต้นทางไม่พอสำหรับน้ำหนักนี้ (BR24)",
-  RUN_FARE_NOT_SET:
-    "รอบรถนี้ยังไม่มีค่าเที่ยว — 0 บาทใช้ได้เฉพาะรถส่งสาขา (R25)",
+  INSUFFICIENT_STOCK: "สต็อกต้นทางไม่พอสำหรับน้ำหนักนี้",
+  RUN_FARE_NOT_SET: "รอบรถนี้ยังไม่มีค่าเที่ยว — 0 บาทใช้ได้เฉพาะรถส่งสาขา",
   MANUAL_ALLOC_NOT_AUTOMATIC:
     "วิธีเฉลี่ยค่าขนส่งของรอบนี้เป็น MANUAL — ระบบไม่แบ่งให้อัตโนมัติ และรอบนี้ยังไม่มีหน้าจอกรอกส่วนแบ่งเอง",
   RUN_HAS_NO_LINES: "รอบรถนี้ยังไม่มีล็อตบนรถ จึงแบ่งค่าขนส่งไม่ได้",
   FREIGHT_RECONCILE_FAILED:
-    "ส่วนแบ่งค่าขนส่งรวมกันไม่เท่าค่าเที่ยว ระบบจึงไม่บันทึก (R24)",
+    "ส่วนแบ่งค่าขนส่งรวมกันไม่เท่าค่าเที่ยว ระบบจึงไม่บันทึก",
   RECEIPT_EVENT_DATE_REQUIRED: "ต้องระบุวันที่รับของ",
   RECEIPT_WEIGHT_INVALID: "น้ำหนักที่รับต้องไม่ติดลบ",
   RECEIPT_BAG_COUNT_INVALID: "จำนวนถุงที่รับต้องมากกว่า 0",
   LINE_NOT_FOUND: "ไม่พบรายการขนส่งนี้",
   LINE_ALREADY_RECEIVED: "รายการนี้มีผู้ยืนยันรับไปแล้ว",
-  PARTIAL_RECEIPT_NOT_ALLOWED:
-    "การตั้งค่าไม่อนุญาตให้รับของไม่ครบ ณ วันที่นี้ (D06)",
+  PARTIAL_RECEIPT_NOT_ALLOWED: "การตั้งค่าไม่อนุญาตให้รับของไม่ครบ ณ วันที่นี้",
   VARIANCE_REASON_REQUIRED:
-    "น้ำหนักที่รับต่างจากน้ำหนักที่ส่งเกินเกณฑ์ — ต้องกรอกเหตุผลก่อนบันทึก (UAT-11, BR12)",
+    "น้ำหนักที่รับต่างจากน้ำหนักที่ส่งเกินเกณฑ์ — ต้องกรอกเหตุผลก่อนบันทึก",
 };
 
 /** Codes whose database detail (a key name, the weights) is worth keeping after the Thai. */
@@ -87,7 +85,8 @@ function toResult<T>(
   error: { message: string } | null,
 ): RpcResult<T> {
   if (error || data === null || data === undefined) {
-    const raw = error?.message ?? "ระบบไม่ส่งผลลัพธ์กลับมา — ตรวจรายการก่อนทำซ้ำ";
+    const raw =
+      error?.message ?? "ระบบไม่ส่งผลลัพธ์กลับมา — ตรวจรายการก่อนทำซ้ำ";
     const code = raw.match(/^([A-Z_]+):/)?.[1] ?? "";
     const thai = MESSAGES[code];
     const detail = raw.slice(code.length + 1).trim();
@@ -101,7 +100,8 @@ function toResult<T>(
   return { ok: true, data };
 }
 
-export type TransportRoute = "FOODIVA_TO_CM" | "CM_TO_FOODIVA" | "CENTRAL_TO_BRANCH";
+export type TransportRoute =
+  "FOODIVA_TO_CM" | "CM_TO_FOODIVA" | "CENTRAL_TO_BRANCH";
 
 /** fn_create_transport_run → run id. alloc_method is snapshotted inside from config at the
  * event date (R29); it is not, and must not become, a parameter. */

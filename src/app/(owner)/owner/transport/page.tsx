@@ -43,8 +43,7 @@ import { createClient } from "@/lib/supabase/server";
  * outbound action derives each step's key from it (Finding 5), so a retry replays.
  */
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function many(value: string | string[] | undefined): string[] {
@@ -119,7 +118,9 @@ export default async function TransportPage(
     dispatchable?.error ??
     lines?.error;
   const threshold =
-    thresholdCfg?.value_numeric != null ? Number(thresholdCfg.value_numeric) : null;
+    thresholdCfg?.value_numeric != null
+      ? Number(thresholdCfg.value_numeric)
+      : null;
   const receiveLine = receiveId
     ? (outstanding.rows.find((r) => r.line_id === receiveId) ?? null)
     : null;
@@ -136,8 +137,8 @@ export default async function TransportPage(
       </div>
 
       <p className="text-body-sm text-text-secondary">
-        ค่าขนส่งดึงจากการตั้งค่าตามประเภทรถ ไม่มีช่องกรอกค่าขนส่ง (BR10) ·
-        ของทุกล็อตต้องเข้าคลังกลางก่อนส่งสาขาเสมอ และรถส่งสาขาไม่มีค่าขนส่ง (BR11)
+        ค่าขนส่งดึงจากการตั้งค่าตามประเภทรถ ไม่มีช่องกรอกค่าขนส่ง ·
+        ของทุกล็อตต้องเข้าคลังกลางก่อนส่งสาขาเสมอ และรถส่งสาขาไม่มีค่าขนส่ง
       </p>
 
       {saved ? (
@@ -206,7 +207,7 @@ export default async function TransportPage(
       <section className="flex flex-col gap-2">
         <h2 className="text-h2 text-text-primary">ค้างรับ</h2>
         <p className="text-caption text-text-muted">
-          ส่งแล้วแต่ยังไม่ยืนยันรับครบ รวมรายการที่รับไม่ครบ (D06)
+          ส่งแล้วแต่ยังไม่ยืนยันรับครบ รวมรายการที่รับไม่ครบ
         </p>
         <OutstandingList
           rows={outstanding.rows}

@@ -44,13 +44,14 @@ export async function WaitingNotice() {
       <ul className="flex flex-col gap-1 text-body-sm text-text-secondary">
         {waiting.map((r) => (
           <li key={r.item_key}>
-            <span className="text-text-primary">{r.label_th}</span> — ยังใช้ไม่ได้:{" "}
-            {r.gates_th}
+            <span className="text-text-primary">{r.label_th}</span> —
+            ยังใช้ไม่ได้: {r.gates_th}
           </li>
         ))}
       </ul>
       <p className="text-caption text-text-muted">
-        ไม่ใช่สิ่งที่คุณต้องแก้ เมื่อเจ้าของร้านตั้งค่าแล้ว หน้าจอที่เกี่ยวข้องจะใช้ได้ทันที
+        ไม่ใช่สิ่งที่คุณต้องแก้ เมื่อเจ้าของร้านตั้งค่าแล้ว
+        หน้าจอที่เกี่ยวข้องจะใช้ได้ทันที
       </p>
     </section>
   );

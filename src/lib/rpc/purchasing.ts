@@ -21,14 +21,14 @@ import { createClient } from "@/lib/supabase/server";
  */
 
 export type RpcResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; code: string; message: string };
+  { ok: true; data: T } | { ok: false; code: string; message: string };
 
 /** The named raises of both functions and of fn_require_owner, in Thai. Each names what the
  * Owner can do about it, because the Owner is the one who has to. */
 const MESSAGES: Record<string, string> = {
-  IDEMPOTENCY_KEY_REQUIRED: "คำสั่งบันทึกไม่สมบูรณ์ กรุณาเปิดหน้านี้ใหม่แล้วลองอีกครั้ง",
-  FORBIDDEN: "บัญชีนี้ไม่มีสิทธิ์สั่งซื้อ — เฉพาะเจ้าของกิจการ (ADR-004)",
+  IDEMPOTENCY_KEY_REQUIRED:
+    "คำสั่งบันทึกไม่สมบูรณ์ กรุณาเปิดหน้านี้ใหม่แล้วลองอีกครั้ง",
+  FORBIDDEN: "บัญชีนี้ไม่มีสิทธิ์สั่งซื้อ — เฉพาะเจ้าของกิจการ",
   NO_ACTOR: "บัญชีนี้ถูกปิดใช้งานแล้ว",
   PO_EVENT_DATE_REQUIRED: "ต้องระบุวันที่สั่งซื้อ",
   PO_WEIGHT_INVALID: "น้ำหนักที่สั่งต้องมากกว่า 0 กก.",
@@ -40,7 +40,7 @@ const MESSAGES: Record<string, string> = {
   DELIVERY_WEIGHT_INVALID: "น้ำหนักรอบส่งต้องมากกว่า 0 กก.",
   LOCATION_NOT_FOUND: "ไม่พบปลายทางนี้ในระบบ",
   LOCATION_KIND_INVALID:
-    "ปลายทางของรอบส่งต้องเป็นโรงรมควันเชียงใหม่ — ของจาก Foodiva ไม่ไปคลังกลางหรือสาขาโดยตรง (BR11)",
+    "ปลายทางของรอบส่งต้องเป็นโรงรมควันเชียงใหม่ — ของจาก Foodiva ไม่ไปคลังกลางหรือสาขาโดยตรง",
   DELIVERY_IDEMPOTENCY_CONFLICT:
     "คำสั่งนี้บันทึกรอบส่งไปแล้วด้วยข้อมูลชุดก่อนหน้า — ตรวจรายการรอบส่งด้านบนก่อนบันทึกใหม่ ระบบไม่สร้างล็อตซ้ำ",
   PO_NOT_FOUND: "ไม่พบ PO นี้",
@@ -55,7 +55,8 @@ function toResult<T>(
   error: { message: string } | null,
 ): RpcResult<T> {
   if (error || data === null || data === undefined) {
-    const raw = error?.message ?? "ระบบไม่ส่งผลลัพธ์กลับมา — ตรวจรายการก่อนบันทึกซ้ำ";
+    const raw =
+      error?.message ?? "ระบบไม่ส่งผลลัพธ์กลับมา — ตรวจรายการก่อนบันทึกซ้ำ";
     const code = raw.match(/^([A-Z_]+):/)?.[1] ?? "";
     return { ok: false, code, message: MESSAGES[code] ?? raw };
   }

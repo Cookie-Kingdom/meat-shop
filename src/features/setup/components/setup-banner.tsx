@@ -39,8 +39,8 @@ export async function SetupBanner() {
       <ul className="flex flex-col gap-1 text-body-sm text-text-secondary">
         {unset.map((r) => (
           <li key={r.item_key}>
-            <span className="text-text-primary">{r.label_th}</span> — ยังใช้ไม่ได้:{" "}
-            {r.gates_th}
+            <span className="text-text-primary">{r.label_th}</span> —
+            ยังใช้ไม่ได้: {r.gates_th}
           </li>
         ))}
       </ul>

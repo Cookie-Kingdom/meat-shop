@@ -68,23 +68,32 @@ export function RunSheet({
       <dl className="flex flex-col gap-1 rounded-md border border-border bg-surface-sunken p-3 text-body-sm">
         <div className="flex justify-between gap-3">
           <dt className="text-text-secondary">ค่าเที่ยว</dt>
-          <dd className="text-num-md text-text-primary tabular-nums">{thb(run.run_cost_thb)}</dd>
+          <dd className="text-num-md text-text-primary tabular-nums">
+            {thb(run.run_cost_thb)}
+          </dd>
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-text-secondary">วิธีแบ่ง</dt>
-          <dd className="text-right text-text-primary">{METHOD_LABEL[run.alloc_method]}</dd>
+          <dd className="text-right text-text-primary">
+            {METHOD_LABEL[run.alloc_method]}
+          </dd>
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-text-secondary">น้ำหนักบนรถ</dt>
-          <dd className="text-text-primary tabular-nums">{kg(run.dispatched_weight_kg)}</dd>
+          <dd className="text-text-primary tabular-nums">
+            {kg(run.dispatched_weight_kg)}
+          </dd>
         </div>
         <div className="flex justify-between gap-3">
           <dt className="text-text-secondary">แบ่งแล้ว</dt>
-          <dd className="text-text-primary tabular-nums">{thb(run.allocated_thb)}</dd>
+          <dd className="text-text-primary tabular-nums">
+            {thb(run.allocated_thb)}
+          </dd>
         </div>
       </dl>
       <p className="text-caption text-text-muted">
-        วิธีแบ่งบันทึกไว้ตอนสร้างรอบรถ การตั้งค่าที่เปลี่ยนภายหลังไม่ย้อนมาเปลี่ยนรอบนี้ (R29)
+        วิธีแบ่งบันทึกไว้ตอนสร้างรอบรถ
+        การตั้งค่าที่เปลี่ยนภายหลังไม่ย้อนมาเปลี่ยนรอบนี้
       </p>
 
       <p
@@ -96,7 +105,7 @@ export function RunSheet({
         )}
       >
         {run.fare_reconciles_to_satang
-          ? "ส่วนแบ่งรวมเท่าค่าเที่ยวพอดี (R24)"
+          ? "ส่วนแบ่งรวมเท่าค่าเที่ยวพอดี"
           : run.alloc_method === "MANUAL"
             ? "ยังไม่ได้แบ่งค่าขนส่ง — วิธีแบ่งเป็น MANUAL และรอบนี้ยังไม่มีหน้าจอกรอกส่วนแบ่งเอง"
             : "ส่วนแบ่งยังไม่ครบค่าเที่ยว — กด “แบ่งค่าขนส่งใหม่” ด้านล่าง"}
@@ -114,13 +123,17 @@ export function RunSheet({
               className="flex min-h-14 items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2"
             >
               <span className="flex flex-col">
-                <span className="text-label text-text-primary tabular-nums">{l.lot_code}</span>
+                <span className="text-label text-text-primary tabular-nums">
+                  {l.lot_code}
+                </span>
                 <span className="text-caption text-text-secondary tabular-nums">
                   {kg(l.dispatched_weight_kg)}
                 </span>
               </span>
               <span className="text-num-sm text-text-primary tabular-nums">
-                {l.freight_share_thb === null ? "ยังไม่แบ่ง" : thb(l.freight_share_thb)}
+                {l.freight_share_thb === null
+                  ? "ยังไม่แบ่ง"
+                  : thb(l.freight_share_thb)}
               </span>
             </li>
           ))}
@@ -131,7 +144,10 @@ export function RunSheet({
         <form action={reallocateRun}>
           <input type="hidden" name="idempotency_key" value={idempotencyKey} />
           <input type="hidden" name="run_id" value={run.run_id} />
-          <button type="submit" className={cn(actionButton, "h-12 w-full md:w-auto")}>
+          <button
+            type="submit"
+            className={cn(actionButton, "h-12 w-full md:w-auto")}
+          >
             แบ่งค่าขนส่งใหม่
           </button>
         </form>
@@ -141,7 +157,10 @@ export function RunSheet({
         <form action={addLotsToRun} className="flex flex-col gap-3">
           <input type="hidden" name="idempotency_key" value={idempotencyKey} />
           <input type="hidden" name="run_id" value={run.run_id} />
-          <Field label="เพิ่มล็อตขึ้นรถคันนี้" hint="เฉพาะล็อตที่ยังรอรถ — น้ำหนักเป็นน้ำหนักรอบส่งจาก OW 01">
+          <Field
+            label="เพิ่มล็อตขึ้นรถคันนี้"
+            hint="เฉพาะล็อตที่ยังรอรถ — น้ำหนักเป็นน้ำหนักรอบส่งจาก OW 01"
+          >
             <span className="flex flex-col gap-2">
               {dispatchable.map((r) => (
                 <label
@@ -155,7 +174,9 @@ export function RunSheet({
                     className="size-6 shrink-0 accent-accent"
                   />
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-label text-text-primary tabular-nums">{r.lot_code}</span>
+                    <span className="text-label text-text-primary tabular-nums">
+                      {r.lot_code}
+                    </span>
                     <span className="text-caption text-text-secondary">
                       {r.supplier_name} · ถึง {r.chef_house_name ?? "—"}
                     </span>

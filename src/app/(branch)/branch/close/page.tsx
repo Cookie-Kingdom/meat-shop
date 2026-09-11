@@ -66,7 +66,10 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
   ]);
   const lots = ready.rows;
 
-  const here = new URLSearchParams({ location: branch.id, date: day.date }).toString();
+  const here = new URLSearchParams({
+    location: branch.id,
+    date: day.date,
+  }).toString();
   const back = `/branch/close?${here}`;
   const saved = one(params.saved);
   const err = one(params.err);
@@ -91,9 +94,15 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
         params={{ location: branch.id }}
       />
 
-      {saved === "sales" ? <Notice tone="success">บันทึกยอดขายแล้ว</Notice> : null}
-      {saved === "waste" ? <Notice tone="success">บันทึก Waste แล้ว</Notice> : null}
-      {saved === "expense" ? <Notice tone="success">บันทึกค่าใช้จ่ายแล้ว</Notice> : null}
+      {saved === "sales" ? (
+        <Notice tone="success">บันทึกยอดขายแล้ว</Notice>
+      ) : null}
+      {saved === "waste" ? (
+        <Notice tone="success">บันทึก Waste แล้ว</Notice>
+      ) : null}
+      {saved === "expense" ? (
+        <Notice tone="success">บันทึกค่าใช้จ่ายแล้ว</Notice>
+      ) : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {ready.error || diff.error ? (
         <Notice tone="danger">
@@ -112,7 +121,11 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
         <>
           <DiffPanel diff={diff.row} readyLots={lots} />
           {report.status === "CLOSED" ? (
-            <ClosedDayNotice db={day.supabase} reportId={report.id} date={day.date} />
+            <ClosedDayNotice
+              db={day.supabase}
+              reportId={report.id}
+              date={day.date}
+            />
           ) : null}
 
           <form
@@ -127,7 +140,8 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
               ยอดขาย
             </h2>
             <p className="text-caption text-text-muted">
-              กรอกเป็นจำนวน — ราคาระบบใช้ตามที่เจ้าของร้านตั้งไว้ของวันนั้น ช่องที่เว้นว่างไม่ถูกบันทึก
+              กรอกเป็นจำนวน — ราคาระบบใช้ตามที่เจ้าของร้านตั้งไว้ของวันนั้น
+              ช่องที่เว้นว่างไม่ถูกบันทึก
             </p>
 
             <fieldset className="flex flex-col gap-2">
@@ -153,12 +167,18 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="flex flex-col">
-                            <span className="text-body text-text-primary">ล็อต {l.lot_code}</span>
+                            <span className="text-body text-text-primary">
+                              ล็อต {l.lot_code}
+                            </span>
                             <span className="text-caption text-text-muted">
                               รมควัน {thaiDate(l.smoke_date)}
                             </span>
                           </span>
-                          <StockStateBadge state="ready" weightKg={l.available_qty} size="sm" />
+                          <StockStateBadge
+                            state="ready"
+                            weightKg={l.available_qty}
+                            size="sm"
+                          />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <CountField
@@ -182,14 +202,20 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
             </fieldset>
 
             <fieldset className="grid gap-3 sm:grid-cols-3">
-              <legend className="mb-2 text-label text-text-secondary">รายการอื่น</legend>
+              <legend className="mb-2 text-label text-text-secondary">
+                รายการอื่น
+              </legend>
               <CountField
                 label="น้ำพริก หลอด 30 กรัม"
                 name="chilli"
                 unit="หลอด"
                 defaultValue={kept("chilli")}
               />
-              <KgField label="ข้าวเหนียว" name="rice" defaultValue={kept("rice")} />
+              <KgField
+                label="ข้าวเหนียว"
+                name="rice"
+                defaultValue={kept("rice")}
+              />
               <CountField
                 label="น้ำเปล่า"
                 name="water"
@@ -214,7 +240,8 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
               Waste เนื้อพร้อมขายที่เหลือ
             </h2>
             <p className="text-caption text-text-muted">
-              เนื้อที่ละลายแล้วเก็บข้ามวันไม่ได้ — ชั่งส่วนที่เหลือจริงแล้วบันทึกทีละล็อต
+              เนื้อที่ละลายแล้วเก็บข้ามวันไม่ได้ —
+              ชั่งส่วนที่เหลือจริงแล้วบันทึกทีละล็อต
             </p>
             {lots.length === 0 ? (
               <p className="rounded-lg border border-border bg-surface-sunken p-4 text-body-sm text-text-secondary">
@@ -236,16 +263,24 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
                           name="waste_pick"
                           value={value}
                           required
-                          defaultChecked={lots.length === 1 || value === kept("waste_pick")}
+                          defaultChecked={
+                            lots.length === 1 || value === kept("waste_pick")
+                          }
                           className="size-5 shrink-0"
                         />
                         <span className="flex flex-1 flex-col">
-                          <span className="text-body text-text-primary">ล็อต {l.lot_code}</span>
+                          <span className="text-body text-text-primary">
+                            ล็อต {l.lot_code}
+                          </span>
                           <span className="text-caption text-text-muted">
                             รมควัน {thaiDate(l.smoke_date)}
                           </span>
                         </span>
-                        <StockStateBadge state="ready" weightKg={l.available_qty} size="sm" />
+                        <StockStateBadge
+                          state="ready"
+                          weightKg={l.available_qty}
+                          size="sm"
+                        />
                       </label>
                     );
                   })}
@@ -278,9 +313,13 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
               ค่าใช้จ่ายสาขา
             </h2>
             {expenses.error ? (
-              <Notice tone="danger">อ่านค่าใช้จ่ายไม่สำเร็จ — {expenses.error}</Notice>
+              <Notice tone="danger">
+                อ่านค่าใช้จ่ายไม่สำเร็จ — {expenses.error}
+              </Notice>
             ) : expenses.rows.length === 0 ? (
-              <p className="text-body-sm text-text-secondary">วันนี้ยังไม่มีค่าใช้จ่าย</p>
+              <p className="text-body-sm text-text-secondary">
+                วันนี้ยังไม่มีค่าใช้จ่าย
+              </p>
             ) : (
               <ul className="flex flex-col">
                 {expenses.rows.map((e) => (
@@ -289,7 +328,7 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
                     className="flex items-start justify-between gap-3 border-b border-border py-2 last:border-b-0"
                   >
                     <span className="flex min-w-0 flex-col">
-                      <span className="break-words text-body text-text-primary">
+                      <span className="text-body break-words text-text-primary">
                         {EXPENSE_LABEL[e.category] ?? e.category}
                         {e.detail ? ` · ${e.detail}` : ""}
                       </span>
@@ -297,7 +336,7 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
                         ผู้สำรองจ่าย {e.paid_by_person}
                       </span>
                     </span>
-                    <span className="shrink-0 font-mono tabular-nums text-text-primary">
+                    <span className="shrink-0 font-mono text-text-primary tabular-nums">
                       {thb(e.amount_thb)}
                     </span>
                   </li>
@@ -325,7 +364,11 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
                   ))}
                 </select>
               </Field>
-              <MoneyField label="จำนวนเงิน" name="exp_amount" defaultValue={kept("exp_amount")} />
+              <MoneyField
+                label="จำนวนเงิน"
+                name="exp_amount"
+                defaultValue={kept("exp_amount")}
+              />
               <Field label="ผู้สำรองจ่าย">
                 <input
                   type="text"
@@ -349,7 +392,10 @@ export default async function BranchClose(props: PageProps<"/branch/close">) {
           </section>
 
           <BottomActionBar>
-            <Link href={`/branch/close/confirm?${here}`} className={writeButton}>
+            <Link
+              href={`/branch/close/confirm?${here}`}
+              className={writeButton}
+            >
               ไปหน้ายืนยันปิดวัน
             </Link>
           </BottomActionBar>

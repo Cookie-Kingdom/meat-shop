@@ -44,10 +44,11 @@ export default async function AllocatePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
-      <h1 className="text-h1 text-text-primary">OW 07 · จัดสรรสู่สาขา</h1>
+      <h1 className="text-h1 text-text-primary">จัดสรรสู่สาขา</h1>
       <p className="text-body-sm text-text-secondary">
-        ส่งได้เฉพาะของแช่แข็งที่รับเข้าคลังกลางแล้ว (BR11) ระบบเสนอวันรมควันที่เก่าที่สุดก่อน
-        ข้ามได้แต่ต้องมีเหตุผล (BR07) รอบรถส่งสาขาไม่มีค่าขนส่ง
+        ส่งได้เฉพาะของแช่แข็งที่รับเข้าคลังกลางแล้ว
+        ระบบเสนอวันรมควันที่เก่าที่สุดก่อน ข้ามได้แต่ต้องมีเหตุผล
+        รอบรถส่งสาขาไม่มีค่าขนส่ง
       </p>
 
       {error ? (
@@ -58,7 +59,7 @@ export default async function AllocatePage() {
         <p className="rounded-lg border border-border bg-surface p-6 text-body text-text-secondary">
           ยังไม่มีของแช่แข็งในคลังกลาง — รับของขากลับเข้าคลังที่{" "}
           <Link href="/owner/central" className="text-accent underline">
-            OW 06 · สต็อกกลาง
+            สต็อกกลาง
           </Link>{" "}
           ก่อน ของที่ยังอยู่บนรถจัดสรรไม่ได้
         </p>

@@ -44,14 +44,21 @@ export async function readReadyLots(db: Db, locationId: string) {
 export async function readDiff(db: Db, locationId: string, date: string) {
   const { data, error } = await db
     .from("v_branch_diff")
-    .select("ready_in_kg, sold_pack_qty, sold_kg, wasted_kg, diff_kg, variance_pct, verdict")
+    .select(
+      "ready_in_kg, sold_pack_qty, sold_kg, wasted_kg, diff_kg, variance_pct, verdict",
+    )
     .eq("location_id", locationId)
     .eq("business_date", date)
     .maybeSingle();
-  return { row: (data ?? null) as DiffRow | null, error: error?.message ?? null };
+  return {
+    row: (data ?? null) as DiffRow | null,
+    error: error?.message ?? null,
+  };
 }
 
 /** The lots still holding READY, largest first: the lines to check first. Display order only. */
 export function largestFirst(rows: ReadyLot[]): ReadyLot[] {
-  return [...rows].sort((a, b) => Number(b.available_qty) - Number(a.available_qty));
+  return [...rows].sort(
+    (a, b) => Number(b.available_qty) - Number(a.available_qty),
+  );
 }

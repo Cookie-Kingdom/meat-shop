@@ -74,10 +74,10 @@ export default async function ReturnsPage(props: PageProps<"/owner/returns">) {
 
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
-      <h1 className="text-h1 text-text-primary">OW 05 · ต้นทุนและนัดรับขากลับ</h1>
+      <h1 className="text-h1 text-text-primary">ต้นทุนและนัดรับขากลับ</h1>
       <p className="text-body-sm text-text-secondary">
         Lot ที่เชียงใหม่ปิดแล้ว รอกำหนดวันที่รถมารับของกลับ — การปิด Lot
-        ไม่ได้สร้างงานรถให้เอง (BR17) รอนานที่สุดอยู่บนสุด
+        ไม่ได้สร้างงานรถให้เอง รอนานที่สุดอยู่บนสุด
       </p>
 
       {error ? (

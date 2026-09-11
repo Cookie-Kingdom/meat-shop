@@ -37,7 +37,7 @@ export function ConfigHistorySheet({
       tone="history"
     >
       <p className="text-caption text-text-secondary">
-        ทุกแถวยังอ่านได้เสมอ ค่าที่เคยใช้คำนวณไปแล้วจะไม่ถูกเขียนทับ (BR23)
+        ทุกแถวยังอ่านได้เสมอ ค่าที่เคยใช้คำนวณไปแล้วจะไม่ถูกเขียนทับ
       </p>
 
       <ol className="flex flex-col gap-2">
@@ -65,7 +65,9 @@ export function ConfigHistorySheet({
             <span className="text-caption text-text-muted">
               โดย{" "}
               {row.created_by_name ??
-                (row.created_by === null ? "ค่าตั้งต้นตามข้อกำหนด (v0.2)" : "—")}
+                (row.created_by === null
+                  ? "ค่าตั้งต้นตามข้อกำหนด (v0.2)"
+                  : "—")}
             </span>
             {row.note ? (
               <span className="w-full text-caption text-text-secondary">

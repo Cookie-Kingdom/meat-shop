@@ -84,7 +84,10 @@ export async function submitAllocation(
   if (!branchId) return failed("BRANCH_REQUIRED", "เลือกสาขาปลายทางก่อน");
   const groupId = str(form, "smoke_date_group_id");
   if (!groupId) {
-    return failed("SMOKE_GROUP_REQUIRED", "เลือกกลุ่มวันรมควันและ Lot ที่จะส่งก่อน");
+    return failed(
+      "SMOKE_GROUP_REQUIRED",
+      "เลือกกลุ่มวันรมควันและ Lot ที่จะส่งก่อน",
+    );
   }
   const weight = parseKg(str(form, "dispatched_weight_kg"));
   if (weight === null) return failed("NOT_A_WEIGHT", NOT_A_WEIGHT);

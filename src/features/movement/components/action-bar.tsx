@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
 
 export function ActionBar({ children }: { children: ReactNode }) {
   return (
-    <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:-mx-6 md:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0">
+    /* bottom-14: on top of the 56px tab bar (NavTabs), which carries the safe-area inset. */
+    <div className="sticky bottom-14 z-10 -mx-4 border-t border-border bg-surface px-4 py-3 md:-mx-6 md:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0">
       {children}
     </div>
   );

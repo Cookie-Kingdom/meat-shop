@@ -1,16 +1,21 @@
-import Link from "next/link";
-
 import { RoleShell } from "@/components/shared/role-shell";
-import { actionLink } from "@/components/ui/controls";
+import type { NavTab } from "@/components/shared/nav-tabs";
 import { requireRole } from "@/lib/auth/session";
 
 /* (branch) — BR 01–09, L2_BRANCH_ADMIN only.
  *
  * The gate is here rather than on each page so a new screen in this group cannot be
- * added without it. It is still only the mirror: RLS decides (ADR-004).
- *
- * The nav holds one line per built screen; each lane that adds a branch screen appends its line
- * (PARALLEL-LANES.md, "Files every lane touches"). */
+ * added without it. It is still only the mirror: RLS decides (ADR-004). */
+
+/* AppShell's L2 set (DESIGN-CONTRACTS.md), scoped to one branch by the views' WHERE. ข้าวเหนียว
+ * and ยืนยันปิดวัน are reached from งานวันนี้; five tabs is the cap at 320px. */
+const TABS: NavTab[] = [
+  { href: "/branch", label: "งานวันนี้", icon: "today" },
+  { href: "/branch/receive", label: "รับของ", icon: "receive" },
+  { href: "/branch/thaw", label: "ละลาย", icon: "thaw" },
+  { href: "/branch/close", label: "ปิดวัน", icon: "close" },
+  { href: "/branch/count", label: "วัสดุ", icon: "materials" },
+];
 
 export default async function BranchLayout({
   children,
@@ -19,16 +24,7 @@ export default async function BranchLayout({
 }) {
   await requireRole("L2_BRANCH_ADMIN");
   return (
-    <RoleShell title="สาขา">
-      <nav aria-label="เมนูสาขา" className="flex flex-wrap gap-x-4">
-        <Link href="/branch" className={actionLink}>งานวันนี้</Link>
-        <Link href="/branch/receive" className={actionLink}>รับเนื้อเข้าสาขา</Link>
-        <Link href="/branch/thaw" className={actionLink}>แบ่งละลายเนื้อ</Link>
-        <Link href="/branch/close" className={actionLink}>ปิดยอดรายวัน</Link>
-        <Link href="/branch/close/confirm" className={actionLink}>ยืนยันปิดวัน</Link>
-        <Link href="/branch/rice" className={actionLink}>ข้าวเหนียว</Link>
-        <Link href="/branch/count" className={actionLink}>เช็ควัสดุ</Link>
-      </nav>
+    <RoleShell title="สาขา" tabs={TABS}>
       {children}
     </RoleShell>
   );

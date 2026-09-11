@@ -45,8 +45,7 @@ import { getRun, roundsByLotIds } from "./queries";
  */
 
 const BASE = "/owner/transport";
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const BAD_KEY = "คำสั่งบันทึกไม่สมบูรณ์ กรุณาเปิดหน้านี้ใหม่แล้วลองอีกครั้ง";
 
@@ -99,7 +98,9 @@ export async function confirmOutboundRun(form: FormData) {
   if (!trip) back("เลือกเที่ยวเดียวหรือไป-กลับ");
   if (lots.length === 0) back("เลือกอย่างน้อยหนึ่งล็อตขึ้นรถ");
   if (str(form, "sig") !== outboundSig(choice)) {
-    back("ข้อมูลเปลี่ยนหลังคำนวณค่าขนส่ง — ตรวจค่าขนส่งด้านล่างอีกครั้งแล้วค่อยยืนยัน");
+    back(
+      "ข้อมูลเปลี่ยนหลังคำนวณค่าขนส่ง — ตรวจค่าขนส่งด้านล่างอีกครั้งแล้วค่อยยืนยัน",
+    );
   }
 
   const db = await createClient();
@@ -116,7 +117,8 @@ export async function confirmOutboundRun(form: FormData) {
     );
   }
   if (rounds.error) back(`อ่านข้อมูลล็อตไม่สำเร็จ — ${rounds.error}`);
-  if (rounds.rows.length !== lots.length) back("ไม่พบบางล็อตที่เลือก — โหลดหน้าใหม่แล้วเลือกอีกครั้ง");
+  if (rounds.rows.length !== lots.length)
+    back("ไม่พบบางล็อตที่เลือก — โหลดหน้าใหม่แล้วเลือกอีกครั้ง");
 
   // A lot already on a truck is refused BEFORE anything is written. fn_dispatch_transport_line
   // does not check lot state itself (Cross-lane gaps), so this is the check.
@@ -128,7 +130,9 @@ export async function confirmOutboundRun(form: FormData) {
   }
   const noDestination = rounds.rows.filter((r) => !r.chef_house_location_id);
   if (noDestination.length > 0) {
-    back(`ล็อต ${noDestination.map((r) => r.lot_code).join(", ")} ไม่มีโรงรมควันปลายทาง`);
+    back(
+      `ล็อต ${noDestination.map((r) => r.lot_code).join(", ")} ไม่มีโรงรมควันปลายทาง`,
+    );
   }
 
   const run = await createTransportRun({
@@ -143,7 +147,9 @@ export async function confirmOutboundRun(form: FormData) {
   });
   if (!run.ok) back(run.message);
 
-  const ordered = [...rounds.rows].sort((a, b) => a.lot_code.localeCompare(b.lot_code));
+  const ordered = [...rounds.rows].sort((a, b) =>
+    a.lot_code.localeCompare(b.lot_code),
+  );
   for (const r of ordered) {
     const line = await dispatchTransportLine({
       idempotencyKey: deriveKey(formKey, `line:${r.lot_id}`),
@@ -183,21 +189,37 @@ export async function addLotsToRun(form: FormData) {
   const runId = str(form, "run_id");
   const lots = lotIds(form);
 
-  if (!UUID.test(runId)) go(`${BASE}?err=${encodeURIComponent("ไม่พบรอบรถนี้")}`);
+  if (!UUID.test(runId))
+    go(`${BASE}?err=${encodeURIComponent("ไม่พบรอบรถนี้")}`);
   if (!UUID.test(formKey)) go(runHref(runId, { err: BAD_KEY }));
   if (lots.length === 0) go(runHref(runId, { err: "เลือกอย่างน้อยหนึ่งล็อต" }));
 
   const db = await createClient();
-  const [run, rounds] = await Promise.all([getRun(db, runId), roundsByLotIds(db, lots)]);
+  const [run, rounds] = await Promise.all([
+    getRun(db, runId),
+    roundsByLotIds(db, lots),
+  ]);
   if (!run || run.route !== "FOODIVA_TO_CM") {
-    go(runHref(runId, { err: "เพิ่มล็อตได้เฉพาะรอบรถขาไป (Foodiva → เชียงใหม่)" }));
+    go(
+      runHref(runId, {
+        err: "เพิ่มล็อตได้เฉพาะรอบรถขาไป (Foodiva → เชียงใหม่)",
+      }),
+    );
   }
   if (rounds.error || rounds.rows.length !== lots.length) {
-    go(runHref(runId, { err: "ไม่พบบางล็อตที่เลือก — โหลดหน้าใหม่แล้วเลือกอีกครั้ง" }));
+    go(
+      runHref(runId, {
+        err: "ไม่พบบางล็อตที่เลือก — โหลดหน้าใหม่แล้วเลือกอีกครั้ง",
+      }),
+    );
   }
   const moved = rounds.rows.filter((r) => r.lot_state !== "PO_CREATED");
   if (moved.length > 0) {
-    go(runHref(runId, { err: `ล็อต ${moved.map((r) => r.lot_code).join(", ")} ขึ้นรถไปแล้ว` }));
+    go(
+      runHref(runId, {
+        err: `ล็อต ${moved.map((r) => r.lot_code).join(", ")} ขึ้นรถไปแล้ว`,
+      }),
+    );
   }
 
   for (const r of rounds.rows) {
@@ -210,7 +232,8 @@ export async function addLotsToRun(form: FormData) {
       toLocationId: r.chef_house_location_id!,
       dispatchedWeightKg: Number(r.foodiva_sent_weight_kg),
     });
-    if (!line.ok) go(runHref(runId, { err: `ล็อต ${r.lot_code}: ${line.message}` }));
+    if (!line.ok)
+      go(runHref(runId, { err: `ล็อต ${r.lot_code}: ${line.message}` }));
   }
 
   // The method is the RUN's snapshot (R29), not config today.
@@ -228,7 +251,8 @@ export async function addLotsToRun(form: FormData) {
 export async function reallocateRun(form: FormData) {
   const key = str(form, "idempotency_key");
   const runId = str(form, "run_id");
-  if (!UUID.test(runId)) go(`${BASE}?err=${encodeURIComponent("ไม่พบรอบรถนี้")}`);
+  if (!UUID.test(runId))
+    go(`${BASE}?err=${encodeURIComponent("ไม่พบรอบรถนี้")}`);
   if (!UUID.test(key)) go(runHref(runId, { err: BAD_KEY }));
 
   const alloc = await allocateFreight({ idempotencyKey: key, runId });
@@ -261,11 +285,13 @@ export async function submitReceipt(form: FormData) {
     go(`${BASE}?${q.toString()}`);
   };
 
-  if (!UUID.test(lineId)) go(`${BASE}?err=${encodeURIComponent("ไม่พบรายการขนส่งนี้")}`);
+  if (!UUID.test(lineId))
+    go(`${BASE}?err=${encodeURIComponent("ไม่พบรายการขนส่งนี้")}`);
   if (!UUID.test(key)) fail(BAD_KEY, false);
   if (!ISO_DATE.test(eventDate)) fail("ต้องระบุวันที่รับของ");
   // 0 is allowed — nothing arrived, and the whole dispatch stays outstanding (D06).
-  if (received === null) fail("กรอกน้ำหนักที่รับจริง — ตัวเลขทศนิยมไม่เกิน 2 ตำแหน่ง");
+  if (received === null)
+    fail("กรอกน้ำหนักที่รับจริง — ตัวเลขทศนิยมไม่เกิน 2 ตำแหน่ง");
 
   const result = await confirmTransportReceipt({
     idempotencyKey: key,

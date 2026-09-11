@@ -39,10 +39,9 @@ export function SubmitBar({
   const { pending } = useFormStatus();
 
   return (
-    <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-border bg-surface p-4 lg:static lg:mx-0 lg:border-0 lg:p-0">
-      {note ? (
-        <p className="text-caption text-text-secondary">{note}</p>
-      ) : null}
+    /* bottom-14: it sits on top of the 56px tab bar (NavTabs), which is fixed below lg. */
+    <div className="sticky bottom-14 -mx-4 flex flex-col gap-2 border-t border-border bg-surface p-4 lg:static lg:mx-0 lg:border-0 lg:p-0">
+      {note ? <p className="text-caption text-text-secondary">{note}</p> : null}
       <button
         type="submit"
         formAction={formAction}

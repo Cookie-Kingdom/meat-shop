@@ -31,8 +31,7 @@ import { createClient } from "@/lib/supabase/server";
  * replays instead of duplicating.
  */
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ECHO_FIELDS = [
   "supplier_id",
@@ -62,19 +61,23 @@ export default async function PurchasingPage(
   const today = todayBangkok();
 
   const db = await createClient();
-  const [register, suppliers, rounds, chefHouses, brinePct] = await Promise.all([
-    listPoRegister(db),
-    isNew ? listSuppliers(db) : null,
-    poId ? listRounds(db, poId) : null,
-    poId ? listChefHouses(db) : null,
-    // Resolved at today, the order date the form defaults to. It is a prefill the Owner can
-    // change, not a value the write depends on.
-    isNew ? configAt(db, "brine_pct_of_meat", today) : null,
-  ]);
+  const [register, suppliers, rounds, chefHouses, brinePct] = await Promise.all(
+    [
+      listPoRegister(db),
+      isNew ? listSuppliers(db) : null,
+      poId ? listRounds(db, poId) : null,
+      poId ? listChefHouses(db) : null,
+      // Resolved at today, the order date the form defaults to. It is a prefill the Owner can
+      // change, not a value the write depends on.
+      isNew ? configAt(db, "brine_pct_of_meat", today) : null,
+    ],
+  );
 
   const readError =
     register.error ?? suppliers?.error ?? rounds?.error ?? chefHouses?.error;
-  const po = poId ? (register.rows.find((r) => r.po_id === poId) ?? null) : null;
+  const po = poId
+    ? (register.rows.find((r) => r.po_id === poId) ?? null)
+    : null;
   const closeHref = "/owner/purchasing";
 
   return (
@@ -93,7 +96,7 @@ export default async function PurchasingPage(
 
       <p className="text-body-sm text-text-secondary">
         PO หนึ่งใบแบ่งส่งได้หลายรอบ ทุกหนึ่งรอบส่งสร้างล็อตใหม่ผูกกับ PO เดิม
-        ยอดส่งสะสมและยอดค้างส่งคำนวณจากรอบส่งจริงเท่านั้น (D01)
+        ยอดส่งสะสมและยอดค้างส่งคำนวณจากรอบส่งจริงเท่านั้น
       </p>
 
       {saved === "po" ? (

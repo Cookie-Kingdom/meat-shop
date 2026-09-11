@@ -33,7 +33,9 @@ function Summary({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-h-12 items-center justify-between gap-3 px-4 py-2">
       <dt className="text-body-sm text-text-secondary">{label}</dt>
-      <dd className="text-right text-body text-text-primary tabular-nums">{children}</dd>
+      <dd className="text-right text-body text-text-primary tabular-nums">
+        {children}
+      </dd>
     </div>
   );
 }
@@ -76,7 +78,7 @@ export function ReturnDateForm({
         >
           บันทึกวันรับแล้ว — ขั้นต่อไปคือสร้างรอบรถขากลับที่{" "}
           <Link href="/owner/transport" className="font-medium underline">
-            OW 02 · ขนส่ง
+            ขนส่ง
           </Link>
         </p>
       ) : null}
@@ -99,7 +101,9 @@ export function ReturnDateForm({
         <Summary label="น้ำหนักแพ็ครวม">{kg(row.packed_weight_kg)} กก.</Summary>
         <Summary label="กลุ่มวันรมควัน">{row.group_count} กลุ่ม</Summary>
         <Summary label="วันนัดรับ">
-          {row.return_pickup_date ? thaiDate(row.return_pickup_date) : "ยังไม่ได้นัด"}
+          {row.return_pickup_date
+            ? thaiDate(row.return_pickup_date)
+            : "ยังไม่ได้นัด"}
         </Summary>
       </dl>
 
@@ -109,7 +113,7 @@ export function ReturnDateForm({
         <p className="rounded-lg border border-border bg-surface-sunken p-4 text-body text-text-secondary">
           Lot นี้ขึ้นรถขากลับแล้ว เปลี่ยนวันรับไม่ได้ — รับเข้าคลังได้ที่{" "}
           <Link href="/owner/central" className="text-accent underline">
-            OW 06 · สต็อกกลาง
+            สต็อกกลาง
           </Link>
         </p>
       ) : (
@@ -119,7 +123,7 @@ export function ReturnDateForm({
 
           <Field
             label="วันที่รถมารับของที่เชียงใหม่"
-            hint="ช่องเดียวของหน้านี้ ไม่ต้องกรอกต้นทุน ระบบคิดจาก Config เอง (UAT-23)"
+            hint="ช่องเดียวของหน้านี้ ไม่ต้องกรอกต้นทุน ระบบคิดจาก Config เอง"
           >
             <input
               type="date"
@@ -135,7 +139,7 @@ export function ReturnDateForm({
             <p className="text-caption text-text-muted">
               นัดวันรับไว้แล้ว — สร้างรอบรถขากลับได้ที่{" "}
               <Link href="/owner/transport" className="text-accent underline">
-                OW 02 · ขนส่ง
+                ขนส่ง
               </Link>{" "}
               หรือเปลี่ยนวันได้จนกว่ารถจะออก
             </p>

@@ -61,7 +61,8 @@ export function ReceiptWeight({
 
   const measure = (raw: string) => {
     const actual = toHundredths(raw);
-    const pct = actual === null ? null : variancePctHundredths(actual, expected);
+    const pct =
+      actual === null ? null : variancePctHundredths(actual, expected);
     return { actual, pct, off: pct !== null && pct > ZERO };
   };
 
@@ -86,11 +87,11 @@ export function ReceiptWeight({
       : !off
         ? "ตรงกับน้ำหนักที่ส่ง"
         : threshold === null
-          ? "ยังไม่ได้ตั้งเกณฑ์ส่วนต่างในการตั้งค่า — ระบบจะไม่รับบันทึกจนกว่าจะตั้ง (ADR-023)"
+          ? "ยังไม่ได้ตั้งเกณฑ์ส่วนต่างในการตั้งค่า — ระบบจะไม่รับบันทึกจนกว่าจะตั้ง"
           : over
             ? requiresReason === false
               ? `เกินเกณฑ์ ${fromHundredths(threshold)}% — การตั้งค่าไม่บังคับเหตุผล บันทึกได้ ระบบแจ้งเตือน`
-              : `เกินเกณฑ์ ${fromHundredths(threshold)}% — บันทึกได้ แต่ต้องกรอกเหตุผล ระบบแจ้งเตือน (UAT-11, BR12)`
+              : `เกินเกณฑ์ ${fromHundredths(threshold)}% — บันทึกได้ แต่ต้องกรอกเหตุผล ระบบแจ้งเตือน`
             : `ไม่เกินเกณฑ์ ${fromHundredths(threshold)}%`;
 
   return (
@@ -101,7 +102,12 @@ export function ReceiptWeight({
             <span className="text-label text-text-secondary">
               เหตุผลที่น้ำหนักไม่ตรง{required ? " (ต้องกรอก)" : " (ไม่บังคับ)"}
             </span>
-            <span className={cn("text-caption", over ? "text-danger" : "text-text-muted")}>
+            <span
+              className={cn(
+                "text-caption",
+                over ? "text-danger" : "text-text-muted",
+              )}
+            >
               {verdict}
             </span>
             <textarea
@@ -115,7 +121,7 @@ export function ReceiptWeight({
           </label>
           <Field
             label="วิธีปิดส่วนต่าง (ถ้ามี)"
-            hint="เช่น หักจากผู้ขนส่ง — ระบบเก็บตามที่กรอก (D06)"
+            hint="เช่น หักจากผู้ขนส่ง — ระบบเก็บตามที่กรอก"
           >
             <input
               type="text"

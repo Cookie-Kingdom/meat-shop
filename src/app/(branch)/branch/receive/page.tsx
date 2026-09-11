@@ -44,7 +44,9 @@ type Line = {
   bag_count: number | null;
 };
 
-export default async function BranchReceive(props: PageProps<"/branch/receive">) {
+export default async function BranchReceive(
+  props: PageProps<"/branch/receive">,
+) {
   const params = await props.searchParams;
   const day = await loadBranchDay({ location: one(params.location), date: "" });
   const branch = day.branch;
@@ -64,7 +66,9 @@ export default async function BranchReceive(props: PageProps<"/branch/receive">)
   const key = crypto.randomUUID();
   const base = new URLSearchParams({ location: branch.id }).toString();
   const lineId = one(params.line);
-  const line = lines.find((l) => l.line_id === lineId && l.received_weight_kg === null);
+  const line = lines.find(
+    (l) => l.line_id === lineId && l.received_weight_kg === null,
+  );
   const needReason = one(params.need_reason) === "1";
   const defaultDate = one(params.date) || (day.open?.report_date ?? day.today);
   const saved = one(params.saved);
@@ -83,10 +87,14 @@ export default async function BranchReceive(props: PageProps<"/branch/receive">)
         ‹ กลับไปงานวันนี้
       </Link>
 
-      {saved === "receipt" ? <Notice tone="success">รับเข้าสาขาแล้ว</Notice> : null}
+      {saved === "receipt" ? (
+        <Notice tone="success">รับเข้าสาขาแล้ว</Notice>
+      ) : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {error ? (
-        <Notice tone="danger">อ่านรายการค้างรับไม่สำเร็จ — {error.message}</Notice>
+        <Notice tone="danger">
+          อ่านรายการค้างรับไม่สำเร็จ — {error.message}
+        </Notice>
       ) : null}
 
       {line ? (
@@ -102,13 +110,15 @@ export default async function BranchReceive(props: PageProps<"/branch/receive">)
           <dl className="grid grid-cols-2 gap-2 rounded-md bg-surface-sunken p-3">
             <div>
               <dt className="text-caption text-text-secondary">ยอดที่ส่งมา</dt>
-              <dd className="text-num-md tabular-nums text-text-primary">
+              <dd className="text-num-md text-text-primary tabular-nums">
                 {formatKg(line.dispatched_weight_kg)} กก.
               </dd>
             </div>
             <div>
-              <dt className="text-caption text-text-secondary">จำนวนถุงที่ส่ง</dt>
-              <dd className="text-num-md tabular-nums text-text-primary">
+              <dt className="text-caption text-text-secondary">
+                จำนวนถุงที่ส่ง
+              </dt>
+              <dd className="text-num-md text-text-primary tabular-nums">
                 {line.bag_count ?? "ไม่ได้นับ"}
                 {line.bag_count ? " ถุง" : ""}
               </dd>
@@ -192,7 +202,8 @@ export default async function BranchReceive(props: PageProps<"/branch/receive">)
                   {l.received_weight_kg !== null ? (
                     <span className="text-caption text-warning tabular-nums">
                       รับแล้ว {formatKg(l.received_weight_kg)} กก. · ค้างบนรถ{" "}
-                      {formatKg(l.outstanding_weight_kg)} กก. — รอเจ้าของร้านสรุปส่วนต่าง
+                      {formatKg(l.outstanding_weight_kg)} กก. —
+                      รอเจ้าของร้านสรุปส่วนต่าง
                     </span>
                   ) : null}
                 </span>

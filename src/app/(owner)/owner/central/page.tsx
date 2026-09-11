@@ -55,14 +55,23 @@ const waitingColumns: Column<OutstandingReceiptRow>[] = [
       </Link>
     ),
   },
-  { id: "date", header: "ออกจากเชียงใหม่", cell: (r) => thaiDate(r.dispatch_date) },
+  {
+    id: "date",
+    header: "ออกจากเชียงใหม่",
+    cell: (r) => thaiDate(r.dispatch_date),
+  },
   {
     id: "kg",
     header: "น้ำหนักส่งออก",
     numeric: true,
     cell: (r) => `${kg(r.dispatched_weight_kg)} กก.`,
   },
-  { id: "age", header: "รอมาแล้ว", numeric: true, cell: (r) => `${r.age_days} วัน` },
+  {
+    id: "age",
+    header: "รอมาแล้ว",
+    numeric: true,
+    cell: (r) => `${r.age_days} วัน`,
+  },
 ];
 
 const partialColumns: Column<OutstandingReceiptRow>[] = [
@@ -78,9 +87,15 @@ const partialColumns: Column<OutstandingReceiptRow>[] = [
     id: "kg",
     header: "ส่งออก / รับแล้ว",
     numeric: true,
-    cell: (r) => `${kg(r.dispatched_weight_kg)} / ${kg(r.received_weight_kg)} กก.`,
+    cell: (r) =>
+      `${kg(r.dispatched_weight_kg)} / ${kg(r.received_weight_kg)} กก.`,
   },
-  { id: "age", header: "รอมาแล้ว", numeric: true, cell: (r) => `${r.age_days} วัน` },
+  {
+    id: "age",
+    header: "รอมาแล้ว",
+    numeric: true,
+    cell: (r) => `${r.age_days} วัน`,
+  },
 ];
 
 function asBoolean(r: ConfigValueRow): boolean {
@@ -116,15 +131,17 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
   const config = (configRes.data ?? []) as ConfigValueRow[];
   const thresholds: DatedValue<number>[] = config
     .filter((r) => r.item_key === THRESHOLD && r.value_numeric !== null)
-    .map((r) => ({ effective_from: r.effective_from, value: Number(r.value_numeric) }));
+    .map((r) => ({
+      effective_from: r.effective_from,
+      value: Number(r.value_numeric),
+    }));
   const requiresReason: DatedValue<boolean>[] = config
     .filter((r) => r.item_key === REQUIRES)
     .map((r) => ({ effective_from: r.effective_from, value: asBoolean(r) }));
 
-  const centralH = ((centralRes.data ?? []) as { available_qty: number }[]).reduce(
-    (s, r) => s + toHundredths(r.available_qty),
-    0,
-  );
+  const centralH = (
+    (centralRes.data ?? []) as { available_qty: number }[]
+  ).reduce((s, r) => s + toHundredths(r.available_qty), 0);
 
   if (lineId) {
     const line = waiting.find((l) => l.line_id === lineId);
@@ -136,7 +153,9 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
         </Link>
         {line ? (
           <>
-            <h1 className="text-h1 text-text-primary">รับของขากลับ · Lot {line.lot_code}</h1>
+            <h1 className="text-h1 text-text-primary">
+              รับของขากลับ · Lot {line.lot_code}
+            </h1>
             <CentralIntakeForm
               line={line}
               idempotencyKey={newFormKey()}
@@ -148,7 +167,7 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
         ) : (
           <p className="rounded-lg border border-border bg-surface p-6 text-body text-text-secondary">
             {part
-              ? `Lot ${part.lot_code} รับเข้าคลังไปแล้วบางส่วน ยังค้างบนรถ ${kg(part.outstanding_weight_kg)} กก. — รับซ้ำไม่ได้ ยอดค้างรอปิดตามวิธีที่เจ้าของตั้งไว้ (D06)`
+              ? `Lot ${part.lot_code} รับเข้าคลังไปแล้วบางส่วน ยังค้างบนรถ ${kg(part.outstanding_weight_kg)} กก. — รับซ้ำไม่ได้ ยอดค้างรอปิดตามวิธีที่เจ้าของตั้งไว้`
               : "รายการนี้ไม่อยู่ในรายการรอรับแล้ว"}
           </p>
         )}
@@ -158,10 +177,10 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
 
   return (
     <div className="mx-auto flex w-full max-w-[960px] flex-col gap-4">
-      <h1 className="text-h1 text-text-primary">OW 06 · สต็อกกลาง</h1>
+      <h1 className="text-h1 text-text-primary">สต็อกกลาง</h1>
       <p className="text-body-sm text-text-secondary">
         ของขากลับจากเชียงใหม่เป็นสต็อกกลางเมื่อยืนยันน้ำหนักรับจริงเท่านั้น
-        ส่วนต่างเกินเกณฑ์ต้องมีเหตุผล แต่ยังบันทึกได้ (BR12)
+        ส่วนต่างเกินเกณฑ์ต้องมีเหตุผล แต่ยังบันทึกได้
       </p>
 
       {received !== null ? (
@@ -171,7 +190,7 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
         >
           รับเข้าคลังกลาง {kg(received)} กก. แล้ว — พร้อมจัดสรรที่{" "}
           <Link href="/owner/allocate" className="font-medium underline">
-            OW 07 · จัดสรรสู่สาขา
+            จัดสรรสู่สาขา
           </Link>
         </p>
       ) : null}
@@ -186,7 +205,7 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
           </span>
         </span>
         <Link href="/owner/allocate" className={actionLink}>
-          OW 07 · จัดสรรสู่สาขา →
+          จัดสรรสู่สาขา →
         </Link>
       </section>
 
@@ -196,7 +215,9 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
         </p>
       ) : (
         <>
-          <h2 className="text-h2 text-text-primary">รอรับเข้าคลัง ({waiting.length})</h2>
+          <h2 className="text-h2 text-text-primary">
+            รอรับเข้าคลัง ({waiting.length})
+          </h2>
           <ResponsiveTable
             columns={waitingColumns}
             rows={waiting}
@@ -205,7 +226,7 @@ export default async function CentralPage(props: PageProps<"/owner/central">) {
               <p className="rounded-lg border border-border bg-surface p-6 text-center text-body text-text-secondary">
                 ไม่มีของขากลับที่รอรับ — รถขากลับออกจากเชียงใหม่ที่{" "}
                 <Link href="/owner/transport" className="text-accent underline">
-                  OW 02 · ขนส่ง
+                  ขนส่ง
                 </Link>
               </p>
             }

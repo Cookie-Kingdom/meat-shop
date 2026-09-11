@@ -158,7 +158,6 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
       <p className="text-body-sm text-text-secondary">
         การเปลี่ยนค่าคือการเพิ่มแถวใหม่พร้อมวันที่เริ่มใช้
         ไม่ใช่การแก้ทับของเดิม — ตัวเลขที่รายงานเก่าใช้ไปแล้วจะไม่เปลี่ยนตาม
-        (ADR-006, BR23)
       </p>
 
       {saved ? (

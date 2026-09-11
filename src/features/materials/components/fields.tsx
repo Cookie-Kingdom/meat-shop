@@ -34,11 +34,17 @@ export function KgField({
           name={name}
           defaultValue={defaultValue}
           readOnly={readOnly}
-          className={cn(control, "h-12 font-mono text-num-md tabular-nums", readOnly && "bg-surface-sunken")}
+          className={cn(
+            control,
+            "h-12 font-mono text-num-md tabular-nums",
+            readOnly && "bg-surface-sunken",
+          )}
         />
         <span className="shrink-0 text-body text-text-secondary">กก.</span>
       </span>
-      {hint ? <span className="text-caption text-text-muted">{hint}</span> : null}
+      {hint ? (
+        <span className="text-caption text-text-muted">{hint}</span>
+      ) : null}
     </label>
   );
 }
@@ -68,7 +74,11 @@ export function WholeInput({
         name={name}
         defaultValue={defaultValue}
         readOnly={readOnly}
-        className={cn(control, "h-12 font-mono text-num-md tabular-nums", readOnly && "bg-surface-sunken")}
+        className={cn(
+          control,
+          "h-12 font-mono text-num-md tabular-nums",
+          readOnly && "bg-surface-sunken",
+        )}
       />
       <span className="shrink-0 text-body text-text-secondary">{unit}</span>
     </label>

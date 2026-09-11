@@ -41,8 +41,7 @@ const MESSAGES: Record<string, string> = {
 };
 
 export type RpcResult =
-  | { ok: true }
-  | { ok: false; code: string; message: string };
+  { ok: true } | { ok: false; code: string; message: string };
 
 /** Postgres reports our raises as `CODE: detail`. Split the code off for the Thai sentence. */
 function toResult(error: { message: string } | null): RpcResult {

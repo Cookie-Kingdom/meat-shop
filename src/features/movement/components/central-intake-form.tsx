@@ -33,7 +33,10 @@ const idle: ActionState = { status: "idle" };
 function resolveAt<T>(rows: DatedValue<T>[], date: string): T | null {
   let best: DatedValue<T> | null = null;
   for (const r of rows) {
-    if (r.effective_from <= date && (!best || r.effective_from > best.effective_from)) {
+    if (
+      r.effective_from <= date &&
+      (!best || r.effective_from > best.effective_from)
+    ) {
       best = r;
     }
   }
@@ -53,7 +56,10 @@ export function CentralIntakeForm({
   thresholds: DatedValue<number>[];
   requiresReason: DatedValue<boolean>[];
 }) {
-  const [state, formAction, pending] = useActionState(submitCentralIntake, idle);
+  const [state, formAction, pending] = useActionState(
+    submitCentralIntake,
+    idle,
+  );
   const [eventDate, setEventDate] = useState(today);
   const [weight, setWeight] = useState("");
   const [reason, setReason] = useState("");
@@ -123,9 +129,10 @@ export function CentralIntakeForm({
 
       {threshold === null ? (
         <p className="rounded-lg border border-border bg-surface-sunken p-3 text-body-sm text-text-secondary">
-          ยังไม่ได้ตั้งเกณฑ์ส่วนต่างตอนรับของสำหรับวันที่นี้ — ระบบจะรับบันทึกเมื่อเจ้าของตั้งค่าที่{" "}
+          ยังไม่ได้ตั้งเกณฑ์ส่วนต่างตอนรับของสำหรับวันที่นี้ —
+          ระบบจะรับบันทึกเมื่อเจ้าของตั้งค่าที่{" "}
           <Link href="/owner/config" className="text-accent underline">
-            OW 10 · ตั้งค่าระบบ
+            ตั้งค่าระบบ
           </Link>
         </p>
       ) : null}
@@ -137,7 +144,7 @@ export function CentralIntakeForm({
           label="เหตุผลที่น้ำหนักไม่ตรง"
           trigger={
             verdict?.over === true
-              ? "น้ำหนักรับจริงต่างจากที่ส่งออกเกินเกณฑ์ — บอกเหตุผลไว้ แล้วบันทึกต่อได้ (BR12)"
+              ? "น้ำหนักรับจริงต่างจากที่ส่งออกเกินเกณฑ์ — บอกเหตุผลไว้ แล้วบันทึกต่อได้"
               : "ยังไม่มีเกณฑ์ให้เทียบ — ใส่เหตุผลไว้ได้ถ้าน้ำหนักไม่ตรง"
           }
           value={reason}

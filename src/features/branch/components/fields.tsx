@@ -38,11 +38,13 @@ export function WeightField({
           name={name}
           required={required}
           defaultValue={defaultValue}
-          className="min-w-0 flex-1 bg-transparent font-mono text-num-lg tabular-nums text-text-primary outline-none"
+          className="min-w-0 flex-1 bg-transparent font-mono text-num-lg text-text-primary tabular-nums outline-none"
         />
         <span className="text-body text-text-secondary">กก.</span>
       </span>
-      {hint ? <span className="text-caption text-text-muted">{hint}</span> : null}
+      {hint ? (
+        <span className="text-caption text-text-muted">{hint}</span>
+      ) : null}
     </label>
   );
 }
@@ -76,7 +78,9 @@ export function CountField({
         />
         <span className="text-body text-text-secondary">{unit}</span>
       </span>
-      {hint ? <span className="text-caption text-text-muted">{hint}</span> : null}
+      {hint ? (
+        <span className="text-caption text-text-muted">{hint}</span>
+      ) : null}
     </label>
   );
 }

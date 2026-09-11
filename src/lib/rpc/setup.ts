@@ -57,8 +57,8 @@ async function read(supabase: Client): Promise<Readiness> {
 }
 
 /** Once per request: a template's banner and the page beneath it share one round trip. */
-export const getReadiness = cache(
-  async (): Promise<Readiness> => read(await createClient()),
+export const getReadiness = cache(async (): Promise<Readiness> =>
+  read(await createClient()),
 );
 
 /** For sign-in, which must ask through the client that just signed in: that client holds the
@@ -96,8 +96,7 @@ export function waitingFeatures(
  * swallowed. */
 
 export type RpcResult =
-  | { ok: true }
-  | { ok: false; code: string; message: string };
+  { ok: true } | { ok: false; code: string; message: string };
 
 const MESSAGES: Record<string, string> = {
   IDEMPOTENCY_KEY_REQUIRED: "คำสั่งบันทึกไม่สมบูรณ์ กรุณาลองใหม่",

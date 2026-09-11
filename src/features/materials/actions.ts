@@ -55,7 +55,11 @@ export async function submitRice(form: FormData) {
   const { figures, bad } = riceFigures(form, keep);
   if (bad) redirect(withParams(to, { ...keep, err: RICE_BAD }));
   if (Object.keys(figures).length === 0) {
-    redirect(withParams(to, { err: "ยังไม่ได้กรอกน้ำหนักข้าว — กรอกอย่างน้อยหนึ่งช่อง" }));
+    redirect(
+      withParams(to, {
+        err: "ยังไม่ได้กรอกน้ำหนักข้าว — กรอกอย่างน้อยหนึ่งช่อง",
+      }),
+    );
   }
 
   const result = await recordRice({
@@ -64,7 +68,12 @@ export async function submitRice(form: FormData) {
     figures,
   });
   revalidatePath("/branch", "layout");
-  redirect(withParams(to, result.ok ? { saved: "rice" } : { ...keep, err: result.message }));
+  redirect(
+    withParams(
+      to,
+      result.ok ? { saved: "rice" } : { ...keep, err: result.message },
+    ),
+  );
 }
 
 /** BR 08: the count first, then the rice, each under its own page-view key (Finding 2). A count
@@ -75,7 +84,10 @@ export async function submitCount(form: FormData) {
   const countKey = str(form, "count_key");
   const riceKey = str(form, "rice_key");
   const dailyReportId = str(form, "daily_report_id");
-  const keep: Record<string, string> = { count_key: countKey, rice_key: riceKey };
+  const keep: Record<string, string> = {
+    count_key: countKey,
+    rice_key: riceKey,
+  };
   if (str(form, "count_saved") === "1") keep.count_saved = "1";
 
   const counts: CountLine[] = [];
@@ -92,7 +104,11 @@ export async function submitCount(form: FormData) {
     }
     counts.push(
       isPackaging
-        ? { item_type: "PACKAGING", packaging_item_id: name.slice(4), counted_qty: qty }
+        ? {
+            item_type: "PACKAGING",
+            packaging_item_id: name.slice(4),
+            counted_qty: qty,
+          }
         : { item_type: "CHILLI_PASTE", counted_qty: qty },
     );
   }
@@ -102,18 +118,31 @@ export async function submitCount(form: FormData) {
 
   const hasRice = Object.keys(rice.figures).length > 0;
   if (counts.length === 0 && !hasRice) {
-    redirect(withParams(to, { ...keep, err: "ยังไม่ได้กรอกยอดนับ — กรอกอย่างน้อยหนึ่งรายการ" }));
+    redirect(
+      withParams(to, {
+        ...keep,
+        err: "ยังไม่ได้กรอกยอดนับ — กรอกอย่างน้อยหนึ่งรายการ",
+      }),
+    );
   }
 
   if (counts.length > 0) {
-    const counted = await recordPhysicalCount({ idempotencyKey: countKey, dailyReportId, counts });
+    const counted = await recordPhysicalCount({
+      idempotencyKey: countKey,
+      dailyReportId,
+      counts,
+    });
     if (!counted.ok) {
       revalidatePath("/branch", "layout");
       redirect(withParams(to, { ...keep, err: counted.message }));
     }
   }
   if (hasRice) {
-    const riced = await recordRice({ idempotencyKey: riceKey, dailyReportId, figures: rice.figures });
+    const riced = await recordRice({
+      idempotencyKey: riceKey,
+      dailyReportId,
+      figures: rice.figures,
+    });
     if (!riced.ok) {
       revalidatePath("/branch", "layout");
       redirect(
@@ -147,7 +176,10 @@ export async function submitExpense(form: FormData) {
   const h = toHundredths(amountRaw);
   if (h === null) {
     redirect(
-      withParams(to, { ...keep, err: "กรอกจำนวนเงินเป็นตัวเลข ทศนิยมไม่เกิน 2 ตำแหน่ง" }),
+      withParams(to, {
+        ...keep,
+        err: "กรอกจำนวนเงินเป็นตัวเลข ทศนิยมไม่เกิน 2 ตำแหน่ง",
+      }),
     );
   }
 
@@ -160,5 +192,10 @@ export async function submitExpense(form: FormData) {
     detail: detail || null,
   });
   revalidatePath("/branch", "layout");
-  redirect(withParams(to, result.ok ? { saved: "expense" } : { ...keep, err: result.message }));
+  redirect(
+    withParams(
+      to,
+      result.ok ? { saved: "expense" } : { ...keep, err: result.message },
+    ),
+  );
 }

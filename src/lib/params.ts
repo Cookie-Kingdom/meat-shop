@@ -19,7 +19,10 @@ export function backTo(form: FormData, prefix: string): string {
 }
 
 /** `path` with `set` applied to its query: a value sets, null or "" removes. */
-export function withParams(path: string, set: Record<string, string | null>): string {
+export function withParams(
+  path: string,
+  set: Record<string, string | null>,
+): string {
   const [pathname, query = ""] = path.split("?");
   const q = new URLSearchParams(query);
   for (const [k, v] of Object.entries(set)) {

@@ -101,7 +101,7 @@ export default async function SetupPage(props: PageProps<"/owner/setup">) {
       <p className="text-body-sm text-text-secondary">
         รายการด้านล่างเป็นตัวเลขที่มีแต่เจ้าของร้านรู้ ระบบไม่เดาค่าให้ —
         งานที่ต้องใช้ค่านั้นจะบันทึกไม่ได้จนกว่าจะตั้ง ข้ามไปก่อนได้
-        แถบแจ้งเตือนจะอยู่ด้านบนทุกหน้าจนกว่าจะตั้งครบ (ADR-023)
+        แถบแจ้งเตือนจะอยู่ด้านบนทุกหน้าจนกว่าจะตั้งครบ
       </p>
 
       {saved ? (
@@ -156,13 +156,16 @@ export default async function SetupPage(props: PageProps<"/owner/setup">) {
             row.item_key === "full_stock_qty" && !hasPackaging ? (
               /* The seven BR 08 materials, by the Owner's hand — never a migration
                  (PLAN-config-seed.md Finding 10). Shown only while none exists. */
-              <form action={submitPackagingSeed} className="flex flex-col gap-1 pt-1">
+              <form
+                action={submitPackagingSeed}
+                className="flex flex-col gap-1 pt-1"
+              >
                 <button type="submit" className={actionButton}>
                   เพิ่มวัสดุ 7 รายการตามข้อกำหนด
                 </button>
                 <span className="text-caption text-text-muted">
                   กล่องสกรีน กระดาษรอง ถุงซิปเนื้อ ถุงซิปข้าว ถุงหิ้วกระดาษ
-                  สติกเกอร์โลโก้ การ์ด/สติกเกอร์วิธีอุ่น (BR 08) —
+                  สติกเกอร์โลโก้ การ์ด/สติกเกอร์วิธีอุ่น —
                   จากนั้นตั้งสต๊อกเต็มทีละรายการ
                 </span>
               </form>
@@ -180,8 +183,9 @@ export default async function SetupPage(props: PageProps<"/owner/setup">) {
         <h2 className="text-h2 text-text-primary">ค่าที่ข้อกำหนดยืนยันแล้ว</h2>
         <p className="text-body-sm text-text-secondary">
           ระบบใส่ค่าเหล่านี้ไว้ให้ตามข้อกำหนดที่ลูกค้ายืนยัน (v0.2) ตรวจดูได้เลย
-          ถ้าถูกต้องไม่ต้องทำอะไร ถ้าต้องการเปลี่ยน ให้ตั้งค่าใหม่พร้อมวันที่เริ่มใช้
-          — ค่าเดิมยังใช้กับวันก่อนหน้านั้นเสมอ
+          ถ้าถูกต้องไม่ต้องทำอะไร ถ้าต้องการเปลี่ยน
+          ให้ตั้งค่าใหม่พร้อมวันที่เริ่มใช้ —
+          ค่าเดิมยังใช้กับวันก่อนหน้านั้นเสมอ
         </p>
         {seeded.length === 0 ? (
           <p className="rounded-lg border border-border bg-surface p-4 text-body-sm text-text-secondary">
@@ -196,7 +200,7 @@ export default async function SetupPage(props: PageProps<"/owner/setup">) {
               >
                 <div className="flex flex-col gap-1">
                   <span className="text-label text-text-primary">{label}</span>
-                  <span className="text-body-sm tabular-nums text-text-secondary">
+                  <span className="text-body-sm text-text-secondary tabular-nums">
                     {seededValue(row)}
                   </span>
                 </div>

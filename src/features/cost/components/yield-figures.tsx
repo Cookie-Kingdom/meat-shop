@@ -37,7 +37,7 @@ export function YieldFigures({ row }: { row: LotYieldRow }) {
           value={noPreSmoke ? "ข้อมูลไม่ครบ" : pct(row.smoke_yield_pct)}
           trace={
             noPreSmoke
-              ? "ยังไม่ได้บันทึกน้ำหนักก่อนรมควัน (CM 03) — ระบบไม่หารด้วยศูนย์"
+              ? "ยังไม่ได้บันทึกน้ำหนักก่อนรมควัน — ระบบไม่หารด้วยศูนย์"
               : `ผลผลิตแพ็ค ${kg(row.output_weight_kg)} ÷ ก่อนรมควัน ${kg(row.pre_smoke_weight_kg)} × 100`
           }
         />

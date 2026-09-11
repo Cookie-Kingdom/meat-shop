@@ -84,7 +84,7 @@ export default async function ExpensesPage(
       <p className="text-body-sm text-text-secondary">
         บันทึกไว้เพื่อตรวจกับรายการโอนและดูต้นทุนตามหมวด —
         ไม่เปลี่ยนสูตรกำไรรอบแรก ซึ่งยังไม่รวมค่าใช้จ่ายส่วนกลาง ค่าแรง และภาษี
-        (M11, D04) · เงินลงทุนลงเต็มจำนวนในเดือนที่ซื้อ ไม่คิดค่าเสื่อม (ADR-020)
+        · เงินลงทุนลงเต็มจำนวนในเดือนที่ซื้อ ไม่คิดค่าเสื่อม
       </p>
 
       {saved ? (
@@ -115,16 +115,24 @@ export default async function ExpensesPage(
         aria-label="เลือกเดือน"
         className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-4 py-2"
       >
-        <Link href={here({ month: shiftMonth(month, -1) })} className={actionLink}>
+        <Link
+          href={here({ month: shiftMonth(month, -1) })}
+          className={actionLink}
+        >
           ← ก่อนหน้า
         </Link>
         <div className="flex flex-col items-center">
-          <span className="text-label text-text-primary">{thaiMonth(month)}</span>
-          <span className="text-caption tabular-nums text-text-secondary">
+          <span className="text-label text-text-primary">
+            {thaiMonth(month)}
+          </span>
+          <span className="text-caption text-text-secondary tabular-nums">
             รวม {thb(total)} บาท
           </span>
         </div>
-        <Link href={here({ month: shiftMonth(month, 1) })} className={actionLink}>
+        <Link
+          href={here({ month: shiftMonth(month, 1) })}
+          className={actionLink}
+        >
           ถัดไป →
         </Link>
       </nav>
@@ -138,7 +146,8 @@ export default async function ExpensesPage(
           rows={rows}
           emptyState={
             <p className="rounded-lg border border-border bg-surface p-6 text-center text-body text-text-secondary">
-              ยังไม่มีรายการของเดือน{thaiMonth(month)} — กด “บันทึกรายการ” เพื่อเริ่ม
+              ยังไม่มีรายการของเดือน{thaiMonth(month)} — กด “บันทึกรายการ”
+              เพื่อเริ่ม
             </p>
           }
         />

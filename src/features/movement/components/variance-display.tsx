@@ -45,7 +45,8 @@ export function varianceVerdict(
   };
 }
 
-const pct = (h: number) => `${Math.floor(h / 100)}.${String(h % 100).padStart(2, "0")}`;
+const pct = (h: number) =>
+  `${Math.floor(h / 100)}.${String(h % 100).padStart(2, "0")}`;
 
 export function VarianceDisplay({
   expectedKg,
@@ -75,7 +76,10 @@ export function VarianceDisplay({
   return (
     <div
       aria-live="polite"
-      className={cn("flex flex-col gap-1 rounded-lg border p-3 text-body-sm", tone)}
+      className={cn(
+        "flex flex-col gap-1 rounded-lg border p-3 text-body-sm",
+        tone,
+      )}
     >
       <span className="text-text-secondary tabular-nums">
         {comparison} {kg(expectedKg)} กก. · รับจริง {kg(actualKg)} กก.

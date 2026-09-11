@@ -39,7 +39,7 @@ export function OutstandingList({
     if (r.received_weight_kg !== null) {
       return (
         <span className="text-caption text-text-secondary">
-          รับบางส่วนแล้ว ส่วนที่ขาดค้างบนรถ (D06)
+          รับบางส่วนแล้ว ส่วนที่ขาดค้างบนรถ
         </span>
       );
     }
@@ -53,14 +53,14 @@ export function OutstandingList({
     if (kind === "CHEF_HOUSE") {
       return (
         <span className="text-caption text-text-secondary">
-          รอเชียงใหม่ยืนยันรับ (CM 02)
+          รอเชียงใหม่ยืนยันรับ
         </span>
       );
     }
     if (kind === "BRANCH") {
       return (
         <span className="text-caption text-text-secondary">
-          รอสาขายืนยันรับ (BR 02)
+          รอสาขายืนยันรับ
         </span>
       );
     }

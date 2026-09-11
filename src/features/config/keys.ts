@@ -78,7 +78,7 @@ export const CONFIG_KEYS: ConfigKey[] = [
     unit: "",
     scopable: false,
     hint_th:
-      "FOODIVA_DISPATCH — น้ำหนักที่ส่งออกจากฟู้ดดีว่า ไม่ใช่น้ำหนักที่เชียงใหม่รับ (BR10)",
+      "FOODIVA_DISPATCH — น้ำหนักที่ส่งออกจากฟู้ดดีว่า ไม่ใช่น้ำหนักที่เชียงใหม่รับ",
   },
 
   // ── Transport ───────────────────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ export const CONFIG_KEYS: ConfigKey[] = [
     type: "numeric",
     unit: "กก./ซอง",
     scopable: false,
-    hint_th: "ใช้แปลงซอง↔กก. และใช้ตรวจ Diff — ระบบไม่เดาค่านี้ให้ (BR04)",
+    hint_th: "ใช้แปลงซอง↔กก. และใช้ตรวจ Diff — ระบบไม่เดาค่านี้ให้",
   },
   {
     key: "brine_pct_of_meat",

@@ -78,7 +78,7 @@ export function VarianceList({
   return (
     <>
       <p className="text-caption text-text-muted">
-        ส่วนต่าง = |รับ − ส่ง| ÷ ส่ง × 100 (ADR-019) ·{" "}
+        ส่วนต่าง = |รับ − ส่ง| ÷ ส่ง × 100 ·{" "}
         {thresholdPct !== null
           ? `สีแดงเมื่อเกินเกณฑ์ที่ใช้อยู่วันนี้ ${pct(thresholdPct)}`
           : "ยังไม่ได้ตั้งเกณฑ์ส่วนต่างในการตั้งค่า"}

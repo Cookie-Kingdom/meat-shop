@@ -9,7 +9,7 @@ import { formatKg } from "../format";
  * Frozen takes the cool accent, ready takes success. */
 
 const badge = cva(
-  "inline-flex items-baseline gap-1 whitespace-nowrap rounded-md border px-2 tabular-nums",
+  "inline-flex items-baseline gap-1 rounded-md border px-2 whitespace-nowrap tabular-nums",
   {
     variants: {
       state: {

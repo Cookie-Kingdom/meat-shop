@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { isDemoMode } from "@/features/demo/personas";
@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   // ^ref-65 D5: the demo URL is public; keep it out of search results.
   ...(isDemoMode() && { robots: { index: false, follow: false } }),
 };
+
+/* `cover` is what makes env(safe-area-inset-bottom) non-zero under the tab bar on an iPhone. */
+export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

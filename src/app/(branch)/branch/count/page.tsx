@@ -10,7 +10,11 @@ import { loadBranchDay } from "@/features/branch/context";
 import { submitCount } from "@/features/materials/actions";
 import { KgField, WholeInput } from "@/features/materials/components/fields";
 import { MaterialCountRow } from "@/features/materials/components/material-count-row";
-import { asField, readMaterials, readRiceDay } from "@/features/materials/queries";
+import {
+  asField,
+  readMaterials,
+  readRiceDay,
+} from "@/features/materials/queries";
 import { thaiDate } from "@/lib/format/date";
 import { one } from "@/lib/params";
 
@@ -45,7 +49,10 @@ export default async function BranchCount(props: PageProps<"/branch/count">) {
   const branch = day.branch;
   if (!branch) return <NoBranch error={day.error} />;
   const report = day.report;
-  const here = new URLSearchParams({ location: branch.id, date: day.date }).toString();
+  const here = new URLSearchParams({
+    location: branch.id,
+    date: day.date,
+  }).toString();
 
   const heading = (
     <>
@@ -91,7 +98,8 @@ export default async function BranchCount(props: PageProps<"/branch/count">) {
       .limit(1),
   ]);
   const rows = materials.rows;
-  const allUnset = rows.length > 0 && rows.every((r) => r.full_stock_qty === null);
+  const allUnset =
+    rows.length > 0 && rows.every((r) => r.full_stock_qty === null);
   const model = rice.row?.model ?? branch.rice_model;
   const chilli = (chilliRes.data?.[0] ?? null) as {
     counted_qty: number;
@@ -115,15 +123,21 @@ export default async function BranchCount(props: PageProps<"/branch/count">) {
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {countSaved ? (
         <Notice tone="warning">
-          บันทึกยอดนับวัสดุและน้ำพริกแล้ว แต่ข้าวยังไม่ได้บันทึก — แก้ช่องข้าวแล้วกดบันทึกอีกครั้ง
-          ยอดนับจะไม่ถูกบันทึกซ้ำ
+          บันทึกยอดนับวัสดุและน้ำพริกแล้ว แต่ข้าวยังไม่ได้บันทึก —
+          แก้ช่องข้าวแล้วกดบันทึกอีกครั้ง ยอดนับจะไม่ถูกบันทึกซ้ำ
         </Notice>
       ) : null}
       {materials.error || rice.error ? (
-        <Notice tone="danger">อ่านข้อมูลไม่สำเร็จ — {materials.error ?? rice.error}</Notice>
+        <Notice tone="danger">
+          อ่านข้อมูลไม่สำเร็จ — {materials.error ?? rice.error}
+        </Notice>
       ) : null}
       {report.status === "CLOSED" ? (
-        <ClosedDayNotice db={day.supabase} reportId={report.id} date={day.date} />
+        <ClosedDayNotice
+          db={day.supabase}
+          reportId={report.id}
+          date={day.date}
+        />
       ) : null}
 
       <form action={submitCount} className="flex flex-col gap-4">
@@ -131,15 +145,21 @@ export default async function BranchCount(props: PageProps<"/branch/count">) {
         <input type="hidden" name="rice_key" value={riceKey} />
         <input type="hidden" name="daily_report_id" value={report.id} />
         <input type="hidden" name="back" value={`/branch/count?${here}`} />
-        {countSaved ? <input type="hidden" name="count_saved" value="1" /> : null}
+        {countSaved ? (
+          <input type="hidden" name="count_saved" value="1" />
+        ) : null}
 
-        <section aria-labelledby="br08-materials" className="flex flex-col gap-2">
+        <section
+          aria-labelledby="br08-materials"
+          className="flex flex-col gap-2"
+        >
           <h2 id="br08-materials" className="text-h3 text-text-primary">
             วัสดุ {rows.length} รายการ
           </h2>
           {allUnset ? (
             <Notice tone="warning">
-              เจ้าของร้านยังไม่ได้ตั้งสต็อกเต็มของวัสดุ — นับได้ แต่ระบบยังเตือนของใกล้หมดไม่ได้
+              เจ้าของร้านยังไม่ได้ตั้งสต็อกเต็มของวัสดุ — นับได้
+              แต่ระบบยังเตือนของใกล้หมดไม่ได้
             </Notice>
           ) : null}
           {rows.length === 0 ? (
@@ -179,8 +199,9 @@ export default async function BranchCount(props: PageProps<"/branch/count">) {
           />
           {chilli && !countSaved ? (
             <p className="text-body-sm text-text-secondary tabular-nums">
-              นับล่าสุด {Number(chilli.counted_qty)} หลอด · ในระบบ {Number(chilli.system_qty)} หลอด ·
-              ต่าง {Number(chilli.variance_qty) > 0 ? "+" : ""}
+              นับล่าสุด {Number(chilli.counted_qty)} หลอด · ในระบบ{" "}
+              {Number(chilli.system_qty)} หลอด · ต่าง{" "}
+              {Number(chilli.variance_qty) > 0 ? "+" : ""}
               {Number(chilli.variance_qty)} หลอด
             </p>
           ) : null}
@@ -195,21 +216,28 @@ export default async function BranchCount(props: PageProps<"/branch/count">) {
           </h2>
           {model === null ? (
             <Notice tone="warning">
-              เจ้าของร้านยังไม่ได้ตั้งรูปแบบข้าวเหนียวของสาขานี้ — แจ้งเจ้าของร้านก่อน
+              เจ้าของร้านยังไม่ได้ตั้งรูปแบบข้าวเหนียวของสาขานี้ —
+              แจ้งเจ้าของร้านก่อน
             </Notice>
           ) : (
             <>
               <KgField
                 label="ข้าวสุกคงเหลือ"
                 name="cooked_remaining_kg"
-                defaultValue={kept("cooked_remaining_kg") || asField(rice.row?.cooked_remaining_kg)}
+                defaultValue={
+                  kept("cooked_remaining_kg") ||
+                  asField(rice.row?.cooked_remaining_kg)
+                }
                 hint="พรุ่งนี้ยกยอดจากตัวเลขนี้"
               />
               {model === "SELF_COOK" ? (
                 <KgField
                   label="ข้าวดิบคงเหลือ"
                   name="raw_remaining_kg"
-                  defaultValue={kept("raw_remaining_kg") || asField(rice.row?.raw_remaining_kg)}
+                  defaultValue={
+                    kept("raw_remaining_kg") ||
+                    asField(rice.row?.raw_remaining_kg)
+                  }
                 />
               ) : null}
             </>
@@ -217,7 +245,8 @@ export default async function BranchCount(props: PageProps<"/branch/count">) {
         </section>
 
         <p className="text-caption text-text-muted">
-          ช่องที่เว้นว่าง = ยังไม่ได้นับ ไม่ใช่ศูนย์ — ต้องนับวัสดุครบทุกรายการก่อนปิดวัน
+          ช่องที่เว้นว่าง = ยังไม่ได้นับ ไม่ใช่ศูนย์ —
+          ต้องนับวัสดุครบทุกรายการก่อนปิดวัน
         </p>
         <SubmitButton>บันทึกยอดนับ</SubmitButton>
       </form>

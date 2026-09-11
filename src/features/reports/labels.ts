@@ -30,7 +30,7 @@ export const CATEGORY_TH: Record<CostCategory, string> = {
 
 /** Round one's declared exclusions (D04), in the order the note reads them. */
 export const SCOPE_NOTE_TH =
-  "รายได้ LINE MAN เท่านั้น ไม่มีส่วนลดหรือคืนสินค้า · ยังไม่รวมภาษี ค่าใช้จ่ายส่วนกลาง และค่าแรง (D04)";
+  "รายได้ LINE MAN เท่านั้น ไม่มีส่วนลดหรือคืนสินค้า · ยังไม่รวมภาษี ค่าใช้จ่ายส่วนกลาง และค่าแรง";
 
 export const LABOUR_SCOPE_TH = "ค่าแรง — ระยะที่ 2";
 
