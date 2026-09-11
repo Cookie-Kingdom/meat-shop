@@ -1,8 +1,9 @@
 import { actionButton, control, Field } from "@/components/ui/controls";
 
 /* OW 08's filter bar: date range · branch · lot (S7). A plain GET form, so every filter state is
- * a URL the Owner can bookmark and no client JavaScript ships. Sticky at the top and
- * horizontally scrollable in its own container at 360px. */
+ * a URL the Owner can bookmark and no client JavaScript ships. Sticky at the top. At 360px
+ * it is a two-column grid (dates, then branch + lot, then a full-width button) so nothing
+ * sits off-screen; from md: one wrapping row. */
 
 export type Option = { id: string; label: string };
 
@@ -29,9 +30,9 @@ export function FilterBar({
     <form
       method="get"
       action={action}
-      className="sticky top-0 z-10 -mx-4 overflow-x-auto border-b border-border bg-background px-4 py-2 md:-mx-6 md:px-6"
+      className="sticky top-0 z-10 -mx-4 border-b border-border bg-background px-4 py-2 md:-mx-6 md:px-6"
     >
-      <div className="flex min-w-max items-end gap-2">
+      <div className="grid grid-cols-2 items-end gap-2 md:flex md:flex-wrap">
         <Field label="ตั้งแต่">
           <input
             type="date"
@@ -64,7 +65,7 @@ export function FilterBar({
           </select>
         </Field>
         <input type="hidden" name="view" value={view} />
-        <button type="submit" className={actionButton}>
+        <button type="submit" className={`${actionButton} col-span-2`}>
           ดูรายงาน
         </button>
       </div>
