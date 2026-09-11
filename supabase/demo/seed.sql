@@ -71,10 +71,7 @@ begin
 
   insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
 
-  insert into products (code, name_th, item_type, sale_unit, is_stock_tracked) values
-    ('BOX',   'เนื้อรมควัน (กล่อง)',  'SMOKED_MEAT', 'box',    true),
-    ('SEAL',  'เนื้อรมควัน (ซีล)',   'SMOKED_MEAT', 'bag',    true),
-    ('WATER', 'น้ำเปล่า',          'BEVERAGE',    'bottle', false);
+  -- Products are …0018's five SKUs; only their prices are the seed's.
 
   ---------------------------------------------------------------- config, as the Owner
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
@@ -94,10 +91,14 @@ begin
     '[{"min_weight_kg": 0,   "max_weight_kg": 100,  "rate_thb": 30, "rate_basis": "PER_KG"},
       {"min_weight_kg": 100, "max_weight_kg": null, "rate_thb": 25, "rate_basis": "PER_KG"}]');
 
-  -- Box 350 and sealed 320 are v0.2's; water's price and cost are placeholders.
-  perform fn_set_product_price(gen_random_uuid(), id, d - 30, 350.00) from products where code = 'BOX';
-  perform fn_set_product_price(gen_random_uuid(), id, d - 30, 320.00) from products where code = 'SEAL';
-  perform fn_set_product_price(gen_random_uuid(), id, d - 30, 15.00, 7.00) from products where code = 'WATER';
+  -- Every active SKU needs a price (v_config_readiness). Box 350 and sealed 320 are v0.2's
+  -- (BR 13); chilli, rice and water are placeholders. Rice and water carry a cost too
+  -- (product_costs WARN); meat's comes from the lot, chilli's from its config key.
+  perform fn_set_product_price(gen_random_uuid(), id, d - 30, 350.00) from products where code = 'MEAT_BOX';
+  perform fn_set_product_price(gen_random_uuid(), id, d - 30, 320.00) from products where code = 'MEAT_ADDON_SEALED';
+  perform fn_set_product_price(gen_random_uuid(), id, d - 30, 20.00)  from products where code = 'CHILLI_TUBE';
+  perform fn_set_product_price(gen_random_uuid(), id, d - 30, 100.00, 40.00) from products where code = 'RICE_KG';
+  perform fn_set_product_price(gen_random_uuid(), id, d - 30, 15.00, 7.00)   from products where code = 'WATER_BOTTLE';
 
   perform fn_seed_packaging_items(gen_random_uuid());
   perform fn_set_packaging_full_stock(gen_random_uuid(), id, d - 30, 100) from packaging_items;

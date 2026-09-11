@@ -66,7 +66,9 @@ alter default privileges for role postgres in schema public
 SQL
 echo "PASS  public rebuilt"
 
-# The order lives in one place (^ref-63); this calls it rather than copying it.
+# The order lives in one place (^ref-63); this calls it rather than copying it. The harness
+# calls `supabase db push`; with no CLI on PATH, an exported function hands it to npx.
+command -v supabase >/dev/null || { supabase() { npx -y supabase "$@"; }; export -f supabase; }
 bash supabase/tests/migrations_apply_test.sh --db-url "$SUPABASE_DB_URL"
 
 # ------------------------------------------------------------------------ 4. seed, 5. check
