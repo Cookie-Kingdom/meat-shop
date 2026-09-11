@@ -49,7 +49,7 @@ begin
     (v_l2,    'แอดมินสาขา',       'L2_BRANCH_ADMIN', true),
     (v_l3,    'ผู้ปฏิบัติงานเชียงใหม่', 'L3_CM_OPERATOR',  true);
 
-  insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva') returning id into v_sup;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
 

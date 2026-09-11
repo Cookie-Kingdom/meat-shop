@@ -69,7 +69,7 @@ begin
   insert into user_locations (profile_id, location_id) values
     (v_chef, v_cm), (v_salaeng, v_sld), (v_minburi, v_mnb);
 
-  insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva') returning id into v_sup;
 
   -- Products are …0018's five SKUs; only their prices are the seed's.
 

@@ -80,7 +80,7 @@ begin
   insert into profiles (id, display_name, role, is_active) values (v_owner, 'เจ้าของ', 'L1_OWNER', true);
   insert into locations (code, name_th, kind) values ('CH40S', 'โรงรมทดสอบ', 'CHEF_HOUSE') returning id into v_chef;
   insert into locations (code, name_th, kind) values ('BR40S', 'สาขาทดสอบ', 'BRANCH') returning id into v_bra;
-  insert into suppliers (name) values ('ฟู้ดดีว่าทดสอบ') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva ทดสอบ') returning id into v_sup;
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   v_po  := fn_create_po(gen_random_uuid(), v_sup, current_date - 5, 100.00, 250.00);
   v_lot := fn_add_po_delivery(gen_random_uuid(), v_po, current_date - 5, 100.00, v_chef);

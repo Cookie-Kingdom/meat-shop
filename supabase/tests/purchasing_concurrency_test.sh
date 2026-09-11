@@ -64,7 +64,7 @@ insert into auth.users (id) values ('$ACTOR');
 insert into profiles (id, display_name, role, is_active)
      values ('$ACTOR', 'เจ้าของทดสอบพร้อมกัน', 'L1_OWNER', true);
 insert into locations (code, name_th, kind) values ('CH9', 'โรงรมทดสอบ', 'CHEF_HOUSE');
-insert into suppliers (name) values ('ฟู้ดดีว่าทดสอบ');
+insert into suppliers (name) values ('Foodiva ทดสอบ');
 select set_config('request.jwt.claims', '{"sub":"$ACTOR"}', false);
 select fn_create_po(gen_random_uuid(), (select id from suppliers), current_date - 1, 100.00, 250.00);
 SQL

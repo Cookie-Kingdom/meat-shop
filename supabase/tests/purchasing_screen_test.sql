@@ -60,7 +60,7 @@ begin
     returning id into v_branch;
   insert into user_locations (profile_id, location_id) values (v_l2, v_branch), (v_l3, v_chef);
 
-  insert into suppliers (name, is_active) values ('ฟู้ดดีว่า', true)        returning id into v_sup;
+  insert into suppliers (name, is_active) values ('Foodiva', true)        returning id into v_sup;
   insert into suppliers (name, is_active) values ('ผู้ขายที่เลิกใช้', false) returning id into v_gone;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);

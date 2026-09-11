@@ -74,7 +74,7 @@ begin
   insert into locations (code, name_th, kind) values ('BR-F24', 'สาขาทดสอบ', 'BRANCH')
     returning id into v_branch;
   insert into user_locations (profile_id, location_id) values (v_l2, v_branch), (v_l3, v_chef);
-  insert into suppliers (name, is_active) values ('ฟู้ดดีว่า', true) returning id into v_sup;
+  insert into suppliers (name, is_active) values ('Foodiva', true) returning id into v_sup;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
 

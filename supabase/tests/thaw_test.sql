@@ -101,7 +101,7 @@ begin
   insert into locations (code, name_th, kind) values ('BRB40', 'สาขาบี', 'BRANCH') returning id into v_brb;
   insert into user_locations (profile_id, location_id) values
     (v_l3, v_chef), (v_l2a, v_bra), (v_l2b, v_brb);
-  insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva') returning id into v_sup;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   perform fn_set_config(gen_random_uuid(), 'freight_alloc_method', v_today - 60, p_value_text => 'BY_LOT_WEIGHT');

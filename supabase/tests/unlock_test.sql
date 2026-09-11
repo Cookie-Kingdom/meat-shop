@@ -95,7 +95,7 @@ begin
     returning id into v_brB;
   insert into user_locations (profile_id, location_id) values
     (v_l3, v_chef), (v_gone, v_chef), (v_l3b, v_chef2), (v_l2a, v_brA), (v_l2b, v_brB);
-  insert into suppliers (name) values ('ฟู้ดดีว่า UL') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva UL') returning id into v_sup;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   perform fn_set_config(gen_random_uuid(), 'receipt_variance_threshold_pct', date '2026-01-01',

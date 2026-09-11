@@ -84,7 +84,7 @@ begin
   insert into locations (code, name_th, kind) values ('K56-B2', 'สาขาสอง', 'BRANCH')
     returning id into v_b2;
   insert into user_locations (profile_id, location_id) values (v_l2a, v_b1), (v_l3, v_chef);
-  insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva') returning id into v_sup;
 
   select id into v_box    from products where code = 'MEAT_BOX';
   select id into v_chilli from products where code = 'CHILLI_TUBE';

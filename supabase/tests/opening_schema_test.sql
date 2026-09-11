@@ -148,7 +148,7 @@ begin
   -- And the other way round: an opening lot must not carry a phantom PO. The disjunction the
   -- plan drafted would have allowed this, which is the synthetic-round design ADR-021
   -- rejected, reachable again.
-  insert into suppliers (name, is_active) values ('ฟู้ดดีว่า', true) returning id into v_sup;
+  insert into suppliers (name, is_active) values ('Foodiva', true) returning id into v_sup;
   insert into purchase_orders (po_number, supplier_id, event_date, ordered_weight_kg, created_by)
     values ('PO-TC06-001', v_sup, date '2026-08-01', 100.00, v_owner) returning id into v_po;
   insert into po_deliveries (po_id, seq, event_date, foodiva_sent_weight_kg)

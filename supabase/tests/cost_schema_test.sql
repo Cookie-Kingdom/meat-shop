@@ -31,7 +31,7 @@ begin
     values (v_owner, 'เจ้าของ', 'L1_OWNER', true);
   insert into locations (code, name_th, kind) values ('CH32S', 'โรงรมเชียงใหม่', 'CHEF_HOUSE')
     returning id into v_chef;
-  insert into suppliers (name) values ('ฟู้ดดีว่า') returning id into v_sup;
+  insert into suppliers (name) values ('Foodiva') returning id into v_sup;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_owner)::text, true);
   v_po  := fn_create_po(gen_random_uuid(), v_sup, date '2026-05-04', 500.00, 250.00);

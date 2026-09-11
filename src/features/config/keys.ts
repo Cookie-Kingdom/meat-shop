@@ -78,7 +78,7 @@ export const CONFIG_KEYS: ConfigKey[] = [
     unit: "",
     scopable: false,
     hint_th:
-      "FOODIVA_DISPATCH — น้ำหนักที่ส่งออกจากฟู้ดดีว่า ไม่ใช่น้ำหนักที่เชียงใหม่รับ",
+      "FOODIVA_DISPATCH — น้ำหนักที่ส่งออกจาก Foodiva ไม่ใช่น้ำหนักที่เชียงใหม่รับ",
   },
 
   // ── Transport ───────────────────────────────────────────────────────────────────────
