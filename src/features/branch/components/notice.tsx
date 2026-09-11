@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cva } from "class-variance-authority";
+import { ReadError } from "@/components/shared/read-error";
 
 /* One-line outcome and precondition messages on the branch screens. Tone carries the meaning;
  * `locked` is a closed day, not an error — nothing is wrong, the day is simply settled. */
@@ -24,7 +25,10 @@ export function Notice({
   children: ReactNode;
 }) {
   return (
-    <div role={tone === "danger" ? "alert" : "status"} className={notice({ tone })}>
+    <div
+      role={tone === "danger" ? "alert" : "status"}
+      className={notice({ tone })}
+    >
       {children}
     </div>
   );
@@ -33,7 +37,7 @@ export function Notice({
 /** A signed-in L2 with no branch assignment, or a read that failed. */
 export function NoBranch({ error }: { error: string | null }) {
   return error ? (
-    <Notice tone="danger">อ่านข้อมูลสาขาไม่สำเร็จ — {error}</Notice>
+    <ReadError title="อ่านข้อมูลสาขาไม่สำเร็จ" raw={error} />
   ) : (
     <Notice tone="warning">
       บัญชีนี้ยังไม่ได้ผูกกับสาขาใด — แจ้งเจ้าของร้านให้กำหนดสาขา

@@ -13,6 +13,7 @@ import { KgField } from "@/features/materials/components/fields";
 import { asField, readRiceDay } from "@/features/materials/queries";
 import { thaiDate } from "@/lib/format/date";
 import { one } from "@/lib/params";
+import { ReadError } from "@/components/shared/read-error";
 
 /* BR 03 ข้าวเหนียวช่วงเช้า — the morning half of the day's rice (card ^ref-52,
  * PLAN-material-screens.md Findings 6–7; skeleton S1, M7).
@@ -72,7 +73,7 @@ export default async function BranchRice(props: PageProps<"/branch/rice">) {
       ) : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {rice.error ? (
-        <Notice tone="danger">อ่านข้อมูลข้าวไม่สำเร็จ — {rice.error}</Notice>
+        <ReadError title="อ่านข้อมูลข้าวไม่สำเร็จ" raw={rice.error} />
       ) : null}
 
       {!report ? (

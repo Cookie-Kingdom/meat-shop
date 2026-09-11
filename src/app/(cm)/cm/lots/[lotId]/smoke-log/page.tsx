@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AlertBanner } from "@/features/production/components/alert-banner";
+import { ReadError } from "@/components/shared/read-error";
 import { DateNavigator } from "@/features/production/components/date-navigator";
 import { EmptyState } from "@/features/production/components/empty-state";
 import {
@@ -139,12 +140,11 @@ export default async function SmokeLogPage(
       <div className="flex flex-col gap-4">
         {header}
         <DateNavigator path={path} date={date} today={today} />
-        <AlertBanner tone="danger" title="อ่านบันทึกรมควันไม่สำเร็จ">
-          {readError}{" "}
+        <ReadError title="อ่านบันทึกรมควันไม่สำเร็จ" raw={readError}>
           <Link href={`${path}?date=${date}`} className="text-accent underline">
             ลองอีกครั้ง
           </Link>
-        </AlertBanner>
+        </ReadError>
       </div>
     );
   }

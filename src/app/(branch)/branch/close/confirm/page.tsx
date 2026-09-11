@@ -21,6 +21,7 @@ import {
 } from "@/features/production/components/bottom-action-bar";
 import { thaiDate, thaiDateTime } from "@/lib/format/date";
 import { one } from "@/lib/params";
+import { ReadError } from "@/components/shared/read-error";
 
 /* BR 09 ยืนยันปิดวัน — a read-only summary, then the day's one irreversible action (card
  * ^ref-46, PLAN-sales.md T8, PLAN-close-screens.md Findings 2, 3, 7, 8; skeleton S4, UAT-14).
@@ -39,10 +40,22 @@ import { one } from "@/lib/params";
  * replay of the first tap (close_idempotency_key), never a second close. */
 
 const FIX: Record<string, { href: (q: string) => string; label: string }> = {
-  DIFF_OVER_THRESHOLD: { href: (q) => `/branch/close?${q}`, label: "ไปตรวจยอดขาย" },
-  READY_STOCK_NOT_ZERO: { href: (q) => `/branch/close?${q}#waste`, label: "ไปบันทึก Waste" },
-  MATERIAL_COUNT_INCOMPLETE: { href: (q) => `/branch/count?${q}`, label: "ไปหน้าเช็ควัสดุ" },
-  RICE_RECORD_MISSING: { href: (q) => `/branch/count?${q}`, label: "ไปบันทึกข้าวเย็น" },
+  DIFF_OVER_THRESHOLD: {
+    href: (q) => `/branch/close?${q}`,
+    label: "ไปตรวจยอดขาย",
+  },
+  READY_STOCK_NOT_ZERO: {
+    href: (q) => `/branch/close?${q}#waste`,
+    label: "ไปบันทึก Waste",
+  },
+  MATERIAL_COUNT_INCOMPLETE: {
+    href: (q) => `/branch/count?${q}`,
+    label: "ไปหน้าเช็ควัสดุ",
+  },
+  RICE_RECORD_MISSING: {
+    href: (q) => `/branch/count?${q}`,
+    label: "ไปบันทึกข้าวเย็น",
+  },
 };
 
 export default async function BranchCloseConfirm(
@@ -57,7 +70,10 @@ export default async function BranchCloseConfirm(
   if (!branch) return <NoBranch error={day.error} />;
   const report = day.report;
 
-  const here = new URLSearchParams({ location: branch.id, date: day.date }).toString();
+  const here = new URLSearchParams({
+    location: branch.id,
+    date: day.date,
+  }).toString();
   const base = `/branch/close/confirm?${here}`;
   const err = one(params.err);
   const code = one(params.code);
@@ -130,7 +146,8 @@ export default async function BranchCloseConfirm(
           </AlertBanner>
         ) : (
           <Notice tone="locked">
-            วันที่ {thaiDate(day.date)} ปิดแล้ว — ถ้าต้องแก้ ต้องขอปลดล็อกจากเจ้าของร้าน
+            วันที่ {thaiDate(day.date)} ปิดแล้ว — ถ้าต้องแก้
+            ต้องขอปลดล็อกจากเจ้าของร้าน
           </Notice>
         )
       ) : (
@@ -152,10 +169,14 @@ export default async function BranchCloseConfirm(
           {overBand && code !== "DIFF_OVER_THRESHOLD" ? (
             <AlertBanner tone="danger" title="Diff เกินเกณฑ์ — ยังปิดวันไม่ได้">
               <p>
-                ยังไม่มียอดขายหรือ Waste รองรับเนื้อ {formatKg(diff.row?.diff_kg)} กก.
+                ยังไม่มียอดขายหรือ Waste รองรับเนื้อ{" "}
+                {formatKg(diff.row?.diff_kg)} กก.
                 {lotsText ? ` — ตรวจยอดขายของ ${lotsText}` : ""}
               </p>
-              <Link href={`/branch/close?${here}`} className="text-accent underline">
+              <Link
+                href={`/branch/close?${here}`}
+                className="text-accent underline"
+              >
                 ไปตรวจยอดขาย
               </Link>
             </AlertBanner>
@@ -163,7 +184,10 @@ export default async function BranchCloseConfirm(
           {!overBand && lots.length > 0 && code !== "READY_STOCK_NOT_ZERO" ? (
             <AlertBanner tone="danger" title="ยังมีเนื้อพร้อมขายเหลือ">
               <p>{lotsText} — ชั่งแล้วบันทึกเป็น Waste ทีละล็อตก่อนปิดวัน</p>
-              <Link href={`/branch/close?${here}#waste`} className="text-accent underline">
+              <Link
+                href={`/branch/close?${here}#waste`}
+                className="text-accent underline"
+              >
                 ไปบันทึก Waste
               </Link>
             </AlertBanner>
@@ -179,13 +203,17 @@ export default async function BranchCloseConfirm(
           ) : null}
           {/* info */}
           <AlertBanner tone="info">
-            ระบบตรวจเวลาเมื่อกดปิดวัน — ถ้ากดก่อนเวลาที่เจ้าของร้านตั้งไว้ ระบบจะบอกเวลาที่ปิดได้
+            ระบบตรวจเวลาเมื่อกดปิดวัน — ถ้ากดก่อนเวลาที่เจ้าของร้านตั้งไว้
+            ระบบจะบอกเวลาที่ปิดได้
           </AlertBanner>
         </>
       )}
 
       {ready.error || diff.error ? (
-        <Notice tone="danger">อ่านข้อมูลของวันไม่สำเร็จ — {ready.error ?? diff.error}</Notice>
+        <ReadError
+          title="อ่านข้อมูลของวันไม่สำเร็จ"
+          raw={ready.error ?? diff.error}
+        />
       ) : null}
 
       <dl className="rounded-lg border border-border bg-surface px-4 text-body-sm">
@@ -193,21 +221,31 @@ export default async function BranchCloseConfirm(
           <>
             <div className="flex justify-between gap-3 border-b border-border py-2">
               <dt className="text-text-secondary">ละลายพร้อมขาย</dt>
-              <dd className="font-mono tabular-nums">{formatKg(diff.row.ready_in_kg)} กก.</dd>
+              <dd className="font-mono tabular-nums">
+                {formatKg(diff.row.ready_in_kg)} กก.
+              </dd>
             </div>
             <div className="flex justify-between gap-3 border-b border-border py-2">
-              <dt className="text-text-secondary">ขาย {Number(diff.row.sold_pack_qty)} ซอง</dt>
-              <dd className="font-mono tabular-nums">{formatKg(diff.row.sold_kg)} กก.</dd>
+              <dt className="text-text-secondary">
+                ขาย {Number(diff.row.sold_pack_qty)} ซอง
+              </dt>
+              <dd className="font-mono tabular-nums">
+                {formatKg(diff.row.sold_kg)} กก.
+              </dd>
             </div>
             <div className="flex justify-between gap-3 border-b border-border py-2">
               <dt className="text-text-secondary">Waste</dt>
-              <dd className="font-mono tabular-nums">{formatKg(diff.row.wasted_kg)} กก.</dd>
+              <dd className="font-mono tabular-nums">
+                {formatKg(diff.row.wasted_kg)} กก.
+              </dd>
             </div>
             <div className="flex justify-between gap-3 border-b border-border py-2">
               <dt className="text-label">Diff</dt>
               <dd className="font-mono text-label tabular-nums">
                 {formatKg(diff.row.diff_kg)} กก.
-                {diff.row.variance_pct === null ? "" : ` · ${formatKg(diff.row.variance_pct)}%`}
+                {diff.row.variance_pct === null
+                  ? ""
+                  : ` · ${formatKg(diff.row.variance_pct)}%`}
               </dd>
             </div>
           </>
@@ -226,7 +264,10 @@ export default async function BranchCloseConfirm(
             {riceModel === null ? (
               "สาขานี้ยังไม่ได้ตั้งรูปแบบข้าว"
             ) : rice.row?.cooked_remaining_kg == null ? (
-              <Link href={`/branch/count?${here}`} className="text-accent underline">
+              <Link
+                href={`/branch/count?${here}`}
+                className="text-accent underline"
+              >
                 ยังไม่บันทึก
               </Link>
             ) : (
@@ -239,7 +280,10 @@ export default async function BranchCloseConfirm(
         <div className="flex justify-between gap-3 py-2">
           <dt className="text-text-secondary">ค่าใช้จ่ายสาขา</dt>
           <dd className="text-right">
-            <Link href={`/branch/close?${here}#expense`} className="text-accent underline">
+            <Link
+              href={`/branch/close?${here}#expense`}
+              className="text-accent underline"
+            >
               {expenses.count ?? 0} รายการ
             </Link>
           </dd>
@@ -271,10 +315,13 @@ export default async function BranchCloseConfirm(
                 </AlertBanner>
               ) : null}
               <ul className="flex list-disc flex-col gap-1 pl-5 text-body-sm text-text-primary">
-                <li>ปิดแล้วรายการของวันนี้ถูกล็อก แก้ได้เฉพาะเมื่อเจ้าของร้านอนุมัติปลดล็อก</li>
                 <li>
-                  ระบบตรวจก่อนปิด: เวลา, Diff, เนื้อพร้อมขายต้องเหลือศูนย์, นับวัสดุครบ
-                  และข้าวเหนียวคงเหลือตอนเย็น
+                  ปิดแล้วรายการของวันนี้ถูกล็อก
+                  แก้ได้เฉพาะเมื่อเจ้าของร้านอนุมัติปลดล็อก
+                </li>
+                <li>
+                  ระบบตรวจก่อนปิด: เวลา, Diff, เนื้อพร้อมขายต้องเหลือศูนย์,
+                  นับวัสดุครบ และข้าวเหนียวคงเหลือตอนเย็น
                 </li>
               </ul>
               <form action={submitClose} className="flex flex-col gap-3">

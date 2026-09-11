@@ -15,6 +15,7 @@ import { formatKg } from "@/features/branch/format";
 import { Sheet } from "@/features/config/components/sheet";
 import { thaiDate } from "@/lib/format/date";
 import { one } from "@/lib/params";
+import { ReadError } from "@/components/shared/read-error";
 
 /* BR 02 รับเนื้อเข้าสาขา — the branch signs for an allocation (card ^ref-41, PLAN T9, S1).
  *
@@ -92,9 +93,7 @@ export default async function BranchReceive(
       ) : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {error ? (
-        <Notice tone="danger">
-          อ่านรายการค้างรับไม่สำเร็จ — {error.message}
-        </Notice>
+        <ReadError title="อ่านรายการค้างรับไม่สำเร็จ" raw={error.message} />
       ) : null}
 
       {line ? (

@@ -19,6 +19,7 @@ import {
 import { thaiDate } from "@/lib/format/date";
 import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 04 — ผล Lot และ Alert (card ^ref-33). v0.2: "ไม่ต้องกรอก ดูผลและเปิดรายละเอียดเมื่อมี
  * Alert — สรุป Yield, Loss เทียบเกณฑ์". PRODUCT F7: the Owner opens detail only when there is
@@ -182,9 +183,7 @@ export default async function LotResultsPage(
       </nav>
 
       {listError ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านผลล็อตไม่สำเร็จ — {listError.message}
-        </p>
+        <ReadError title="อ่านผลล็อตไม่สำเร็จ" raw={listError.message} />
       ) : (
         <ResponsiveTable
           columns={columns}

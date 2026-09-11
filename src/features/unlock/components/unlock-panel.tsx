@@ -7,6 +7,7 @@ import { thaiDate, thaiDateTime } from "@/lib/format/date";
 import type { UnlockStatus } from "@/lib/rpc/unlock";
 import { cn } from "@/lib/utils";
 import { submitUnlockDecision } from "../actions";
+import { ReadError } from "@/components/shared/read-error";
 
 /* UnlockPanel — OW 11, the unlock half (card ^ref-08). It sits on the same route as
  * ^ref-09's audit table.
@@ -218,9 +219,7 @@ export function UnlockPanel({
       ) : null}
 
       {readError ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านคำขอปลดล็อกไม่สำเร็จ — {readError}
-        </p>
+        <ReadError title="อ่านคำขอปลดล็อกไม่สำเร็จ" raw={readError} />
       ) : pending.length === 0 ? (
         <p className="text-body text-text-secondary">ไม่มีคำขอรออนุมัติ</p>
       ) : (

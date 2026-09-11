@@ -14,6 +14,7 @@ import {
 import { todayBangkok } from "@/lib/format/date";
 import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 01 — สั่งซื้อเนื้อ (card ^ref-20, F4 / M1). Skeleton: the S8 list with S1 sheets over
  * it, opened through the URL like OW 10's. `?new=1` is the create sheet and `?po=<id>` is one
@@ -113,9 +114,7 @@ export default async function PurchasingPage(
         </p>
       ) : null}
       {readError ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านข้อมูลการสั่งซื้อไม่สำเร็จ — {readError}
-        </p>
+        <ReadError title="อ่านข้อมูลการสั่งซื้อไม่สำเร็จ" raw={readError} />
       ) : null}
 
       {isNew && suppliers ? (

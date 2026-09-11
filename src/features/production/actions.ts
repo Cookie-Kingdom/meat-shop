@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/session";
 import { todayBangkok } from "@/lib/format/date";
 import { str } from "@/lib/params";
+import { readErrorHint } from "@/lib/read-error";
 import {
   closeLot,
   newIdempotencyKey,
@@ -111,7 +112,11 @@ export async function savePostDrain(input: {
   }
 
   const { data, error } = await readLot(input.lotId);
-  if (error) return fail("READ_FAILED", `อ่านข้อมูล Lot ไม่สำเร็จ — ${error}`);
+  if (error)
+    return fail(
+      "READ_FAILED",
+      `อ่านข้อมูล Lot ไม่สำเร็จ: ${readErrorHint([error])} (${error})`,
+    );
   const received = dbKg(data.lot?.received_weight_kg);
   if (!data.lot?.receipt_date || received === null) {
     return fail(

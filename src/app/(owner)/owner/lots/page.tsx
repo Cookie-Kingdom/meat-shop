@@ -22,6 +22,7 @@ import {
 import { thaiDate } from "@/lib/format/date";
 import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 03 — ติดตาม Lot (card ^ref-33). Skeleton S3, List → Detail, one column; `?lot=` opens
  * the detail. v0.2 OW 03: "รวม Daily Log ยอดรอทำ Yield และสถานะ". PRODUCT F7: daily progress,
@@ -152,9 +153,7 @@ export default async function LotTrackingPage(props: PageProps<"/owner/lots">) {
       </p>
 
       {listError ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านข้อมูลล็อตไม่สำเร็จ — {listError.message}
-        </p>
+        <ReadError title="อ่านข้อมูลล็อตไม่สำเร็จ" raw={listError.message} />
       ) : (
         <ResponsiveTable
           columns={columns}
@@ -193,9 +192,10 @@ export default async function LotTrackingPage(props: PageProps<"/owner/lots">) {
           </div>
 
           {detail.error ? (
-            <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-              อ่านรายละเอียดล็อตไม่สำเร็จ — {detail.error.message}
-            </p>
+            <ReadError
+              title="อ่านรายละเอียดล็อตไม่สำเร็จ"
+              raw={detail.error.message}
+            />
           ) : null}
 
           <section className="rounded-lg border border-border bg-surface p-4">

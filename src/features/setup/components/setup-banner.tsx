@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { actionLink } from "@/components/ui/controls";
 import { getReadiness, unsetBlocking } from "@/lib/rpc/setup";
+import { ReadError } from "@/components/shared/read-error";
 
 /* The Owner's persistent banner (card ^ref-61, ADR-023). Rendered on every (owner) page by
  * `app/(owner)/template.tsx` while any BLOCK item is unset — the Owner may skip setup, and
@@ -17,11 +18,7 @@ export async function SetupBanner() {
   const { rows, error } = await getReadiness();
 
   if (error) {
-    return (
-      <p className="rounded-lg border border-border bg-surface-sunken p-3 text-caption text-text-secondary">
-        อ่านสถานะการตั้งค่าไม่สำเร็จ — {error}
-      </p>
-    );
+    return <ReadError title="อ่านสถานะการตั้งค่าไม่สำเร็จ" raw={error} />;
   }
 
   const unset = unsetBlocking(rows);

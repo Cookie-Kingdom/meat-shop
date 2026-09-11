@@ -24,6 +24,7 @@ import {
 } from "@/features/config/types";
 import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 10 — the config screen (card ^ref-12). Skeleton S8: title + ตั้งค่าใหม่, filter bar,
  * table, pagination. No bottom action bar.
@@ -233,9 +234,7 @@ export default async function ConfigPage(props: PageProps<"/owner/config">) {
       ) : null}
 
       {error ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านค่าตั้งต้นไม่สำเร็จ — {error.message}
-        </p>
+        <ReadError title="อ่านค่าตั้งต้นไม่สำเร็จ" raw={error.message} />
       ) : (
         <ConfigTable
           items={shown}

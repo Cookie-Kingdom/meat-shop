@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Sheet } from "@/features/config/components/sheet";
 import { closeLotAction } from "@/features/production/actions";
 import { AlertBanner } from "@/features/production/components/alert-banner";
+import { ReadError } from "@/components/shared/read-error";
 import {
   BottomActionBar,
   dangerButton,
@@ -228,9 +229,7 @@ export default async function ClosePage(
           </ul>
         </section>
       ) : daysRead.error ? (
-        <AlertBanner tone="danger" title="อ่านบันทึกรายวันไม่สำเร็จ">
-          {daysRead.error}
-        </AlertBanner>
+        <ReadError title="อ่านบันทึกรายวันไม่สำเร็จ" raw={daysRead.error} />
       ) : null}
 
       {closed ? null : (

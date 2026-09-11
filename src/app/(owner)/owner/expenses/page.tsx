@@ -17,6 +17,7 @@ import { isKind, type ExpenseRow } from "@/features/expenses/types";
 import { todayBangkok } from "@/lib/format/date";
 import { one } from "@/lib/params";
 import { createClient } from "@/lib/supabase/server";
+import { ReadError } from "@/components/shared/read-error";
 
 /* OW 09 — owner expenses and investment (card ^ref-54, M11, F12).
  *
@@ -138,9 +139,7 @@ export default async function ExpensesPage(
       </nav>
 
       {error ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านรายการไม่สำเร็จ — {error.message}
-        </p>
+        <ReadError title="อ่านรายการไม่สำเร็จ" raw={error.message} />
       ) : (
         <ExpenseList
           rows={rows}
