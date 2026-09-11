@@ -16,6 +16,12 @@ PROD_REF=enjbvehfsyhekutjtvce
 # ------------------------------------------------------------------------------ 1. guard
 [ -f .env.demo.local ] || { echo "FAIL  .env.demo.local is missing"; exit 2; }
 set -a; . ./.env.demo.local; set +a
+# The dashboard's pooler string carries a [YOUR-PASSWORD] placeholder; fill it from
+# SUPABASE_DB_PASSWORD. The replacement is quoted so bash 5.2 does not expand `&` in it.
+# ponytail: not URL-encoded — a password with @ / : # breaks the URL; reset it without them.
+if [ -n "${SUPABASE_DB_PASSWORD:-}" ]; then
+  SUPABASE_DB_URL=${SUPABASE_DB_URL/\[YOUR-PASSWORD\]/"$SUPABASE_DB_PASSWORD"}
+fi
 
 for v in SUPABASE_DB_URL NEXT_PUBLIC_SUPABASE_URL SUPABASE_SECRET_KEY DEMO_USER_PASSWORD; do
   [ -n "${!v:-}" ] || { echo "FAIL  $v is empty in .env.demo.local"; exit 2; }
@@ -68,7 +74,10 @@ echo "PASS  public rebuilt"
 
 # The order lives in one place (^ref-63); this calls it rather than copying it. The harness
 # calls `supabase db push`; with no CLI on PATH, an exported function hands it to npx.
-command -v supabase >/dev/null || { supabase() { npx -y supabase "$@"; }; export -f supabase; }
+# npm's "run" notice echoes argv, and argv carries the DB URL with its password: keep npm at
+# error level so the URL is never printed (the harness's own promise).
+command -v supabase >/dev/null ||
+  { supabase() { npm_config_loglevel=error npx -y supabase "$@"; }; export -f supabase; }
 bash supabase/tests/migrations_apply_test.sh --db-url "$SUPABASE_DB_URL"
 
 # ------------------------------------------------------------------------ 4. seed, 5. check
