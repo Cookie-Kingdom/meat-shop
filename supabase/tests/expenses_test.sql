@@ -321,13 +321,22 @@ begin
     format('TC-19: fn_record_owner_expense exposes an actor parameter: %s', v_txt);
 
   --------------------------------------------------------------------------------- TC-20
-  -- Rounded to numeric(12,2) before the comparison, so a retry of 100.005 matches the 100.01
-  -- the column stored rather than raising a conflict against itself.
-  v_id := fn_record_owner_expense(v_k3, 'OTHER', date '2026-09-10', 100.005, 'ค่าแก๊ส 10 ก.ย.');
+  -- ^fix-numeric-scale reversed this case (PLAN-numeric-scale.md D3, NS-08). It asserted that
+  -- 100.005 is stored as 100.01, and that a retry of 100.01 matched it. A third decimal is now
+  -- refused by name and nothing is written. The corrected 100.01 then goes in under the SAME
+  -- key: a refusal must not burn the key. That row is also the .01 in TC-22's September total.
+  v_err := null;
+  begin
+    perform fn_record_owner_expense(v_k3, 'OTHER', date '2026-09-10', 100.005, 'ค่าแก๊ส 10 ก.ย.');
+  exception when others then v_err := sqlerrm;
+  end;
+  assert v_err like 'TOO_MANY_DECIMALS: p_amount_thb is 100.005 %',
+    format('TC-20: 100.005 got [%s]', coalesce(v_err, 'no error at all'));
+  select count(*) into v_n from owner_expenses where idempotency_key = v_k3;
+  assert v_n = 0, format('TC-20: the refused amount wrote %s row(s)', v_n);
+  v_id := fn_record_owner_expense(v_k3, 'OTHER', date '2026-09-10', 100.01, 'ค่าแก๊ส 10 ก.ย.');
   select amount_thb into v_num from owner_expenses where id = v_id;
-  assert v_num = 100.01, format('TC-20: 100.005 was stored as %s', v_num);
-  v_again := fn_record_owner_expense(v_k3, 'OTHER', date '2026-09-10', 100.01, 'ค่าแก๊ส 10 ก.ย.');
-  assert v_again = v_id, 'TC-20: a retry carrying the rounded amount was treated as a conflict';
+  assert v_num = 100.01, format('TC-20: the corrected amount was stored as %s', v_num);
 
   --------------------------------------------------------------------------------- TC-21
   select location_name_th into v_txt from v_owner_expenses where id = v_mon;

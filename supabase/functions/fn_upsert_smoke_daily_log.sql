@@ -88,6 +88,11 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_smoked_weight_kg', p_smoked_weight_kg);
+  perform fn_require_two_decimals('p_brine_used_kg', p_brine_used_kg);
+  perform fn_require_two_decimals('p_post_freeze_weight_kg', p_post_freeze_weight_kg);
+
   if p_event_date is null then
     raise exception 'LOG_EVENT_DATE_REQUIRED: the log is one row per lot per day and the day is the key (R6)';
   end if;
@@ -145,6 +150,7 @@ begin
       raise exception 'SOURCE_WEIGHT_INVALID: source % draws % kg — a source row is a positive weight',
         v_i, coalesce(v_src_kg::text, 'null');
     end if;
+    perform fn_require_two_decimals(format('source %s input_weight_kg', v_i), v_src_kg);   -- ^fix-numeric-scale
     if v_src_lot = any (v_seen) then
       raise exception 'SOURCE_LOT_DUPLICATED: lot % appears twice in p_sources — one row per source lot per log (R6a)',
         v_src_lot;

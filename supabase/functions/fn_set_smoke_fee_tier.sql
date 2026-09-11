@@ -74,6 +74,11 @@ begin
     v_rate  := (v_band ->> 'rate_thb')::numeric;
     v_basis :=  v_band ->> 'rate_basis';
 
+    -- ^fix-numeric-scale: smoke_fee_tiers stores all three at numeric(12,2).
+    perform fn_require_two_decimals(format('band %s min_weight_kg', v_i), v_min);
+    perform fn_require_two_decimals(format('band %s max_weight_kg', v_i), v_max);
+    perform fn_require_two_decimals(format('band %s rate_thb', v_i), v_rate);
+
     if v_min is null then
       raise exception 'TIER_MIN_REQUIRED: band % has no min_weight_kg', v_i;
     end if;

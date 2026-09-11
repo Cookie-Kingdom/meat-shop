@@ -102,6 +102,9 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_received_weight_kg', p_received_weight_kg);
+
   if p_event_date is null then
     raise exception 'RECEIPT_EVENT_DATE_REQUIRED: the receipt resolves its own config by its own date, never now() (R12)';
   end if;

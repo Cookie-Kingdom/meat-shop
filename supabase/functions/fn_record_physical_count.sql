@@ -133,6 +133,7 @@ begin
         raise exception 'COUNT_QTY_INVALID: count % has counted_qty [%] — a count is a number >= 0',
           v_seq, coalesce(v_el ->> 'counted_qty', 'null');
       end if;
+      perform fn_require_two_decimals(format('count %s counted_qty', v_seq), v_qty);   -- ^fix-numeric-scale
 
       -- BR21. The physical_counts_whole_units CHECK is the backstop; this is the message.
       if v_type in ('CHILLI_PASTE', 'PACKAGING') and v_qty <> trunc(v_qty) then

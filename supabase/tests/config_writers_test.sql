@@ -195,6 +195,21 @@ begin
   select count(*) into v_n from smoke_fee_tiers;
   assert v_n = 0, format('TC-18: the refused set wrote %s row(s)', v_n);
 
+  --------------------------------------------------------------------------------- NS-07
+  -- ^fix-numeric-scale. smoke_fee_tiers.rate_thb is numeric(12,2): 12.005 is refused by name,
+  -- not stored as 12.01, and the refused set writes nothing.
+  v_ok := false; v_err := null;
+  begin
+    perform fn_set_smoke_fee_tier(gen_random_uuid(), date '2026-01-01', '[
+      {"min_weight_kg": 0, "max_weight_kg": null, "rate_thb": 12.005, "rate_basis": "PER_KG"}]'::jsonb);
+  exception when others then
+    v_err := sqlerrm;
+    v_ok  := v_err like 'TOO_MANY_DECIMALS: band 1 rate_thb is 12.005 %';
+  end;
+  assert v_ok, format('NS-07: a 12.005 THB rate got %s', coalesce(v_err, 'no exception at all'));
+  select count(*) into v_n from smoke_fee_tiers;
+  assert v_n = 0, format('NS-07: the refused set wrote %s row(s)', v_n);
+
   --------------------------------------------------------------------------------- TC-19
   -- An overlap. Two bands price 90 kg and nothing says which wins.
   v_ok := false; v_err := null;

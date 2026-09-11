@@ -46,6 +46,9 @@ declare
   v_route transport_route;
   v_kind  location_kind;
 begin
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_received_weight_kg', p_received_weight_kg);
+
   perform fn_require_central_receiver();
 
   select r.route, l.kind into v_route, v_kind

@@ -217,6 +217,18 @@ begin
       format('TC-39: %s got [%s]', v_counts, coalesce(v_err, 'no error at all'));
   end loop;
 
+  --------------------------------------------------------------------------------- NS-05
+  -- ^fix-numeric-scale. physical_counts.counted_qty is numeric(12,2): 1.005 is refused by name,
+  -- not stored as 1.01. SMOKED_MEAT, so BR21's whole-unit rule is not what refuses it.
+  v_err := null;
+  begin
+    perform fn_record_physical_count(gen_random_uuid(), v_rep_a,
+      jsonb_build_array(jsonb_build_object('item_type', 'SMOKED_MEAT', 'counted_qty', 1.005)));
+  exception when others then v_err := sqlerrm;
+  end;
+  assert v_err like 'TOO_MANY_DECIMALS: count 1 counted_qty is 1.005 %',
+    format('NS-05: counted_qty 1.005 got [%s]', coalesce(v_err, 'no error at all'));
+
   --------------------------------------------------------------------------------- TC-40
   -- BR21, both unit-counted types. The CHECK is the backstop; this is the named refusal.
   foreach v_counts in array array[

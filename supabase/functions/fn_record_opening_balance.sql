@@ -70,6 +70,9 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_qty', p_qty);
+
   -- Actor before role, the house order (fn_require_owner, fn_require_branch): a deactivated
   -- counter holding a live token is NO_ACTOR, not FORBIDDEN. Both are refusals; only one
   -- tells whoever reads the log which state they are actually in.

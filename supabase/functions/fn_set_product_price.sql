@@ -32,6 +32,10 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_price_thb', p_price_thb);
+  perform fn_require_two_decimals('p_cost_thb', p_cost_thb);
+
   v_actor := fn_require_owner();
 
   if p_product_id is null then

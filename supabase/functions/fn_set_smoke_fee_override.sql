@@ -48,6 +48,9 @@ begin
     raise exception 'IDEMPOTENCY_KEY_REQUIRED: every write RPC carries a client-generated key (R4)';
   end if;
 
+  -- ^fix-numeric-scale: a third decimal is refused by name, not rounded by the column.
+  perform fn_require_two_decimals('p_amount_thb', p_amount_thb);
+
   -- NO_ACTOR, FORBIDDEN. Before the lookup, on purpose (header).
   perform fn_require_owner();
 

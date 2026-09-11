@@ -25,7 +25,7 @@
 --   1c  authenticated holds no write privilege anywhere
 --   1d  a table authenticated can SELECT carries a SELECT policy
 --   1e  anon holds EXECUTE on no function in public                         (^ref-64)
---   1f  the ten no-grant functions are executable by neither role, by name   (^ref-64)
+--   1f  the eleven no-grant functions are executable by neither role, by name (^ref-64)
 --   1g  every other fn_* is executable by authenticated and not by anon     (^ref-64)
 --
 -- 1a-1d catch a NEW table added by a later card: migration 0005 looped over pg_tables once,
@@ -131,6 +131,8 @@ begin
   --     All nine are called from inside a SECURITY DEFINER function and by nothing else, ever.
   --     ^ref-40 is the tenth: fn_require_branch_or_owner, the L2-own-branch-or-L1 preamble
   --     (v0.2:57), which the thaw, the sales range and the branch materials range all call.
+  --     ^fix-numeric-scale is the eleventh: fn_require_two_decimals, the input guard every
+  --     write RPC taking a money, weight or quantity value calls.
   select string_agg(p.proname, ', ' order by p.proname), count(*)
     into v_bad, v_n
     from pg_proc p
@@ -140,7 +142,8 @@ begin
                        'fn_config_date',
                        'fn_post_ledger', 'fn_require_owner', 'fn_require_branch',
                        'fn_require_operator', 'fn_require_central_receiver',
-                       'fn_require_branch_or_owner')
+                       'fn_require_branch_or_owner',
+                       'fn_require_two_decimals')
      and (has_function_privilege('anon',          p.oid, 'EXECUTE')
        or has_function_privilege('authenticated', p.oid, 'EXECUTE'));
   assert v_n = 0,
@@ -166,7 +169,7 @@ begin
                            'fn_config_date',
                            'fn_post_ledger', 'fn_require_owner', 'fn_require_branch',
                            'fn_require_operator', 'fn_require_central_receiver',
-                           'fn_require_branch_or_owner',
+                           'fn_require_branch_or_owner', 'fn_require_two_decimals',
                            'fn_audit_row', 'fn_audit_log_append_only',
                            'fn_rollup_smoke_log_input', 'fn_require_lot_for_meat',
                            'fn_stock_ledger_append_only', 'fn_stock_ledger_opening_closed',
