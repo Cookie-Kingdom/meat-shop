@@ -7,6 +7,18 @@
       "skillPath": "skills/deploy-to-vercel/SKILL.md",
       "computedHash": "3a0481591523c55ecfe2569b6b28b2dcbfa3742367667697219d29170981ad53"
     },
+    "supabase": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "a6260582f48df8ba53380bb9b9e870ed2ae5fe147799e90ed783b8aa25167d50"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "128fac78002d916c8ca908245d398e634f540d8bcf20915b2b2359aeb18eba59"
+    },
     "vercel-cli-with-tokens": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
