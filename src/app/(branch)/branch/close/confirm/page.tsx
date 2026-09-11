@@ -13,6 +13,7 @@ import { ReasonField } from "@/features/branch/components/fields";
 import { NoBranch, Notice } from "@/features/branch/components/notice";
 import { loadBranchDay } from "@/features/branch/context";
 import { Sheet } from "@/features/config/components/sheet";
+import { readMaterials, readRiceDay } from "@/features/materials/queries";
 import { AlertBanner } from "@/features/production/components/alert-banner";
 import {
   BottomActionBar,
@@ -40,6 +41,8 @@ import { one } from "@/lib/params";
 const FIX: Record<string, { href: (q: string) => string; label: string }> = {
   DIFF_OVER_THRESHOLD: { href: (q) => `/branch/close?${q}`, label: "ไปตรวจยอดขาย" },
   READY_STOCK_NOT_ZERO: { href: (q) => `/branch/close?${q}#waste`, label: "ไปบันทึก Waste" },
+  MATERIAL_COUNT_INCOMPLETE: { href: (q) => `/branch/count?${q}`, label: "ไปหน้าเช็ควัสดุ" },
+  RICE_RECORD_MISSING: { href: (q) => `/branch/count?${q}`, label: "ไปบันทึกข้าวเย็น" },
 };
 
 export default async function BranchCloseConfirm(
@@ -91,24 +94,22 @@ export default async function BranchCloseConfirm(
     );
   }
 
-  const [ready, diff, alertsRes] = await Promise.all([
+  const [ready, diff, materials, rice, expenses] = await Promise.all([
     readReadyLots(day.supabase, branch.id),
     readDiff(day.supabase, branch.id, day.date),
+    readMaterials(day.supabase, branch.id),
+    readRiceDay(day.supabase, report.id),
     day.supabase
-      .from("v_material_alerts")
-      .select("packaging_code, name_th, is_low")
-      .eq("location_id", branch.id)
-      .order("packaging_code"),
+      .from("v_branch_expenses")
+      .select("branch_expense_id", { count: "exact", head: true })
+      .eq("daily_report_id", report.id),
   ]);
+  const riceModel = rice.row?.model ?? branch.rice_model;
   const lots = largestFirst(ready.rows);
   const lotsText = lots
     .map((l) => `ล็อต ${l.lot_code} ${formatKg(l.available_qty)} กก.`)
     .join(", ");
-  const alerts = (alertsRes.data ?? []) as {
-    packaging_code: string;
-    name_th: string;
-    is_low: boolean | null;
-  }[];
+  const alerts = materials.rows;
   const low = alerts.filter((a) => a.is_low === true).map((a) => a.name_th);
   const unknown = alerts.filter((a) => a.is_low === null).map((a) => a.name_th);
 
@@ -215,9 +216,33 @@ export default async function BranchCloseConfirm(
             วันนี้ไม่มีเนื้อพร้อมขายเข้าหรือออก
           </div>
         )}
-        <div className="flex justify-between gap-3 py-2">
+        <div className="flex justify-between gap-3 border-b border-border py-2">
           <dt className="text-text-secondary">เนื้อพร้อมขายคงเหลือ</dt>
           <dd className="text-right">{lotsText || "ไม่มี"}</dd>
+        </div>
+        <div className="flex justify-between gap-3 border-b border-border py-2">
+          <dt className="text-text-secondary">ข้าวเหนียวสุกคงเหลือ</dt>
+          <dd className="text-right">
+            {riceModel === null ? (
+              "สาขานี้ยังไม่ได้ตั้งรูปแบบข้าว"
+            ) : rice.row?.cooked_remaining_kg == null ? (
+              <Link href={`/branch/count?${here}`} className="text-accent underline">
+                ยังไม่บันทึก
+              </Link>
+            ) : (
+              <span className="font-mono tabular-nums">
+                {formatKg(rice.row.cooked_remaining_kg)} กก.
+              </span>
+            )}
+          </dd>
+        </div>
+        <div className="flex justify-between gap-3 py-2">
+          <dt className="text-text-secondary">ค่าใช้จ่ายสาขา</dt>
+          <dd className="text-right">
+            <Link href={`/branch/close?${here}#expense`} className="text-accent underline">
+              {expenses.count ?? 0} รายการ
+            </Link>
+          </dd>
         </div>
       </dl>
 
