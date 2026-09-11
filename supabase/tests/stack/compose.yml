@@ -1,0 +1,78 @@
+# Card ^ref-72 — the local stack Playwright runs against: postgres, GoTrue, PostgREST, and a
+# gateway that puts /auth/v1 and /rest/v1 under one URL, the way supabase-js expects.
+# Never Meat Shop, never meat-shop-demo (PLAN-integration-tests.md §^ref-72).
+#
+# Brought up and seeded by supabase/tests/stack/up.sh; e2e/run.sh owns its lifecycle.
+# JWT_SECRET comes from the caller and is new each run. Only the gateway is published, on
+# 127.0.0.1. The database passwords never leave the private network.
+#
+# Image tags are the ones supabase/docker/docker-compose.yml pinned on 11 Sep 2026, so this is
+# the auth and REST a self-hosted Supabase runs. postgres:17 is the harness's image, not
+# supabase/postgres: the schema is proved on the same Postgres every *_test.sql uses.
+
+name: meatshop-e2e
+
+services:
+  db:
+    image: postgres:17
+    # Named, so a spec can `docker exec` it without the JWT_SECRET that `compose exec` interpolates.
+    container_name: meatshop-e2e-db
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: meatshop
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # TCP, not the socket: the init server answers on the socket first (^fix-startup-race).
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d meatshop"]
+      interval: 1s
+      retries: 60
+
+  auth:
+    image: supabase/gotrue:v2.196.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: http://127.0.0.1:${E2E_API_PORT:-54380}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:auth@db:5432/meatshop
+      GOTRUE_SITE_URL: http://127.0.0.1:${E2E_APP_PORT:-3100}
+      # Sign-up stays shut; the four personas come in through /admin/users, as in reset.sh.
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is minted by e2e/run.sh}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 1s
+      retries: 60
+
+  rest:
+    image: postgrest/postgrest:v14.17
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:authenticator@db:5432/meatshop
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is minted by e2e/run.sh}
+
+  gateway:
+    image: nginx:1.31.5-alpine
+    depends_on:
+      auth:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    ports:
+      - 127.0.0.1:${E2E_API_PORT:-54380}:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
