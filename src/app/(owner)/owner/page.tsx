@@ -71,6 +71,9 @@ export default function OwnerHome() {
       <Link href="/owner/allocate" className="text-label text-accent hover:underline">
         OW 07 · จัดสรรสู่สาขา →
       </Link>
+      <Link href="/owner/dashboard" className="text-label text-accent hover:underline">
+        OW 08 · แดชบอร์ด →
+      </Link>
     </div>
   );
 }

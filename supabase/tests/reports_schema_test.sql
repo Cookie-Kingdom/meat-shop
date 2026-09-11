@@ -16,7 +16,9 @@ declare
     -- §56 (^ref-56)
     'v_meat_consumption', 'v_lot_unit_cost', 'v_meat_cost_attribution', 'v_cost_breakdown',
     -- §57 (^ref-57)
-    'v_pnl', 'v_pnl_monthly', 'v_pnl_by_lot'
+    'v_pnl', 'v_pnl_monthly', 'v_pnl_by_lot',
+    -- §58 (^ref-58)
+    'v_yield_loss_daily', 'v_owner_exceptions', 'v_sales_trace'
   ];
   v_qty_views text[] := array['v_daily_sales_qty', 'v_monthly_summary_qty'];
   v_bad text;
@@ -60,6 +62,16 @@ begin
    where table_schema = 'public' and table_name = any (v_qty_views)
      and column_name ~ '(thb|price|cost|pct|loss|yield|profit|revenue)';
   assert v_bad is null, format('TC-S04: money-shaped column(s) in a _qty view: %s', v_bad);
+
+  ------------------------------------------------------------------------------ TC-S05
+  -- ADR-011: "loss" is on the Foodiva dispatch base only. In the daily yield view the only
+  -- columns that say it are loss_weight_kg and loss_pct.
+  select string_agg(column_name, ', ') into v_bad
+    from information_schema.columns
+   where table_schema = 'public' and table_name = 'v_yield_loss_daily'
+     and column_name ~ 'loss'
+     and column_name not in ('loss_weight_kg', 'loss_pct');
+  assert v_bad is null, format('TC-S05: v_yield_loss_daily column(s) that say loss off the dispatch base: %s', v_bad);
 
   ------------------------------------------------------------------------------ TC-S06
   select string_agg(n, ', ') into v_bad
