@@ -45,6 +45,7 @@ import type {
 import { thaiDate, todayBangkok } from "@/lib/format/date";
 import { kg } from "@/lib/format/number";
 import { one } from "@/lib/params";
+import { readErrorDetail, readErrorHint } from "@/lib/read-error";
 import {
   readBranches,
   readCostBreakdown,
@@ -496,9 +497,15 @@ export default async function DashboardPage(
       />
 
       {errors.length > 0 ? (
-        <p className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
-          อ่านรายงานไม่สำเร็จ — {errors.join(" · ")}
-        </p>
+        <div className="rounded-lg border border-danger bg-danger-subtle p-4 text-body text-danger">
+          <p>อ่านรายงานไม่สำเร็จ: {readErrorHint(errors)}</p>
+          <details className="mt-2 text-body-sm">
+            <summary className="flex min-h-11 cursor-pointer items-center">
+              รายละเอียดสำหรับผู้ดูแลระบบ
+            </summary>
+            <p className="break-words">{readErrorDetail(errors)}</p>
+          </details>
+        </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
