@@ -44,7 +44,7 @@ export function NewPoSheet({
 
   const brinePctHint =
     brinePctDefault !== null
-      ? `ค่าตั้งต้นจากการตั้งค่าระบบ ${brinePctDefault}% (BR02) — แก้ตามที่ผู้ขายเสนอได้`
+      ? `ค่าตั้งต้นจากการตั้งค่าระบบ ${brinePctDefault}% — แก้ตามที่ผู้ขายเสนอได้`
       : "ยังไม่ได้ตั้งสัดส่วนน้ำดองในการตั้งค่าระบบ — กรอกตามที่ผู้ขายเสนอ หรือเว้นว่าง";
 
   return (

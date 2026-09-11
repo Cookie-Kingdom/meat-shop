@@ -40,7 +40,8 @@ const SKU_TH: Record<string, string> = {
   WATER_BOTTLE: "น้ำเปล่า",
 };
 
-const lotTh = (code: string) => (code === "no lot" ? "ไม่ระบุล็อต" : `ล็อต ${code}`);
+const lotTh = (code: string) =>
+  code === "no lot" ? "ไม่ระบุล็อต" : `ล็อต ${code}`;
 
 export const MESSAGES: Messages = {
   ...BRANCH_MESSAGES,
@@ -89,16 +90,20 @@ export const MESSAGES: Messages = {
   WASTE_IDEMPOTENCY_CONFLICT:
     "คำสั่งบันทึกนี้ถูกใช้กับ Waste รายการอื่นไปแล้ว — โหลดหน้านี้ใหม่แล้วกรอกอีกครั้ง",
   WASTE_ITEM_TYPE_INVALID: "บันทึก Waste ได้เฉพาะเนื้อรมควันและน้ำพริก",
-  WASTE_STATE_INVALID: "บันทึก Waste ได้เฉพาะเนื้อพร้อมขายหรือเนื้อแช่แข็งในสาขา",
+  WASTE_STATE_INVALID:
+    "บันทึก Waste ได้เฉพาะเนื้อพร้อมขายหรือเนื้อแช่แข็งในสาขา",
   WASTE_QTY_INVALID: "น้ำหนักที่ทิ้งต้องมากกว่า 0 และมีทศนิยมไม่เกิน 2 ตำแหน่ง",
   WASTE_REASON_REQUIRED: "ต้องระบุเหตุผลที่ทิ้ง",
-  PRODUCT_AMBIGUOUS: "ระบบหาสินค้าน้ำพริกที่ใช้ตัดสต็อกไม่ได้ — แจ้งเจ้าของร้าน",
+  PRODUCT_AMBIGUOUS:
+    "ระบบหาสินค้าน้ำพริกที่ใช้ตัดสต็อกไม่ได้ — แจ้งเจ้าของร้าน",
   INSUFFICIENT_STOCK:
     "น้ำหนักที่ทิ้งมากกว่าเนื้อพร้อมขายที่เหลือในล็อตนี้ — ตรวจน้ำหนักอีกครั้ง",
 
   // The close (fn_close_daily_report), one sentence per gate, each naming its line (TC-59).
   CLOSE_TOO_EARLY: (raw) => {
-    const m = raw.match(/from (\d{2}:\d{2}) Bangkok time, and it is (\d{2}:\d{2})/);
+    const m = raw.match(
+      /from (\d{2}:\d{2}) Bangkok time, and it is (\d{2}:\d{2})/,
+    );
     return m
       ? `ยังปิดวันไม่ได้ — ปิดได้ตั้งแต่ ${m[1]} น. (ตอนนี้ ${m[2]} น.)`
       : "ยังไม่ถึงเวลาที่ปิดวันได้";

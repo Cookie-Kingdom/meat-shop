@@ -180,7 +180,7 @@ export function PoSheet({
             name="foodiva_sent_weight_kg"
             required
             defaultValue={echo.foodiva_sent_weight_kg ?? ""}
-            hint={`ส่งได้อีกไม่เกิน ${kg(po.outstanding_weight_kg)} — น้ำหนักนี้เป็นฐานคิด Loss ของล็อต (BR03)`}
+            hint={`ส่งได้อีกไม่เกิน ${kg(po.outstanding_weight_kg)} — น้ำหนักนี้เป็นฐานคิด Loss ของล็อต`}
           />
 
           <Field label="หมายเหตุ">
@@ -194,7 +194,7 @@ export function PoSheet({
 
           <SubmitBar
             label="บันทึกรอบส่ง"
-            note="บันทึกแล้วจะสร้างล็อตใหม่ผูกกับ PO นี้ ยังไม่ตัดสต็อกจนกว่าจะส่งรถ (OW 02)"
+            note="บันทึกแล้วจะสร้างล็อตใหม่ผูกกับ PO นี้ ยังไม่ตัดสต็อกจนกว่าจะส่งรถ"
           />
         </form>
       )}

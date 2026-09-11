@@ -44,27 +44,33 @@ export default async function BranchToday(props: PageProps<"/branch">) {
   const branch = day.branch;
   if (!branch) return <NoBranch error={day.error} />;
 
-  const [{ count: outstanding }, { row: diff }, materials, { row: rice }] = await Promise.all([
-    day.supabase
-      .from("v_outstanding_receipts")
-      .select("line_id", { count: "exact", head: true })
-      .eq("route", "CENTRAL_TO_BRANCH")
-      .eq("to_location_id", branch.id),
-    readDiff(day.supabase, branch.id, day.date),
-    readMaterials(day.supabase, branch.id),
-    day.report
-      ? readRiceDay(day.supabase, day.report.id)
-      : Promise.resolve({ row: null, error: null }),
-  ]);
+  const [{ count: outstanding }, { row: diff }, materials, { row: rice }] =
+    await Promise.all([
+      day.supabase
+        .from("v_outstanding_receipts")
+        .select("line_id", { count: "exact", head: true })
+        .eq("route", "CENTRAL_TO_BRANCH")
+        .eq("to_location_id", branch.id),
+      readDiff(day.supabase, branch.id, day.date),
+      readMaterials(day.supabase, branch.id),
+      day.report
+        ? readRiceDay(day.supabase, day.report.id)
+        : Promise.resolve({ row: null, error: null }),
+    ]);
   const riceModel = rice?.model ?? branch.rice_model;
-  const countedToday = materials.rows.filter((m) => m.counted_on === day.date).length;
+  const countedToday = materials.rows.filter(
+    (m) => m.counted_on === day.date,
+  ).length;
 
   /* One key per page view (PLAN T8): a double tap on เปิดวัน is a replay, and the redirect after
    * it renders a fresh key. */
   const key = crypto.randomUUID();
   const report = day.report;
   const closed = report?.status === "CLOSED";
-  const here = new URLSearchParams({ location: branch.id, date: day.date }).toString();
+  const here = new URLSearchParams({
+    location: branch.id,
+    date: day.date,
+  }).toString();
   const saved = one(params.saved);
   const err = one(params.err);
 
@@ -116,7 +122,10 @@ export default async function BranchToday(props: PageProps<"/branch">) {
               <input type="hidden" name="location_id" value={branch.id} />
               <input type="hidden" name="report_date" value={day.date} />
               <input type="hidden" name="back" value={`/branch?${here}`} />
-              <button type="submit" className={checklistItem({ state: "todo" })}>
+              <button
+                type="submit"
+                className={checklistItem({ state: "todo" })}
+              >
                 <ChecklistBody
                   state="todo"
                   label={`เปิดวัน ${thaiDate(day.date)}`}
@@ -141,7 +150,9 @@ export default async function BranchToday(props: PageProps<"/branch">) {
           <ChecklistItem
             label="ข้าวเหนียวช่วงเช้า"
             href={`/branch/rice?${here}`}
-            done={rice?.cooked_received_kg != null || rice?.cooked_today_kg != null}
+            done={
+              rice?.cooked_received_kg != null || rice?.cooked_today_kg != null
+            }
             blocked={report ? undefined : "เปิดวันก่อน"}
             detail={
               riceModel === null
@@ -177,7 +188,11 @@ export default async function BranchToday(props: PageProps<"/branch">) {
             href={`/branch/close?${here}`}
             done={closed || (diff !== null && Number(diff.diff_kg) === 0)}
             blocked={report ? undefined : "เปิดวันก่อน"}
-            detail={diff ? `Diff ${formatKg(diff.diff_kg)} กก.` : "ยังไม่มีเนื้อพร้อมขายเข้าออก"}
+            detail={
+              diff
+                ? `Diff ${formatKg(diff.diff_kg)} กก.`
+                : "ยังไม่มีเนื้อพร้อมขายเข้าออก"
+            }
           />
           <ChecklistItem
             label="เช็ควัสดุ"

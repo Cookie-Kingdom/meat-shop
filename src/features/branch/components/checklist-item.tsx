@@ -19,7 +19,8 @@ export const checklistItem = cva(
         todo: "border-border bg-surface text-text-primary hover:bg-surface-sunken",
         done: "border-success bg-success-subtle text-text-primary",
         blocked: "border-border bg-surface-sunken text-text-secondary",
-        disabled: "border-dashed border-border bg-surface-sunken text-text-muted",
+        disabled:
+          "border-dashed border-border bg-surface-sunken text-text-muted",
       },
     },
     defaultVariants: { state: "todo" },
@@ -27,6 +28,13 @@ export const checklistItem = cva(
 );
 
 const MARK = { todo: "○", done: "✓", blocked: "–", disabled: "–" } as const;
+/* The mark is aria-hidden and the border is colour, so the state is spoken here (^ref-67). */
+const STATE_TH = {
+  todo: "ยังไม่ทำ",
+  done: "เสร็จแล้ว",
+  blocked: "ทำยังไม่ได้",
+  disabled: "ยังไม่เปิดใช้",
+} as const;
 
 type State = keyof typeof MARK;
 
@@ -46,13 +54,12 @@ export function ChecklistBody({
       <span
         aria-hidden
         className={
-          state === "done"
-            ? "text-h3 text-success"
-            : "text-h3 text-text-muted"
+          state === "done" ? "text-h3 text-success" : "text-h3 text-text-muted"
         }
       >
         {MARK[state]}
       </span>
+      <span className="sr-only">{STATE_TH[state]} · </span>
       <span className="flex flex-1 flex-col">
         <span className="text-body">{label}</span>
         {detail ? (
@@ -106,7 +113,10 @@ export function ChecklistItem({
       {body}
     </Link>
   ) : (
-    <div aria-disabled={state === "disabled" || state === "blocked"} className={checklistItem({ state })}>
+    <div
+      aria-disabled={state === "disabled" || state === "blocked"}
+      className={checklistItem({ state })}
+    >
       {body}
     </div>
   );

@@ -68,7 +68,7 @@ export function SmokeFeeTierForm({
         <div className="sm:max-w-xs">
           <Field
             label="เริ่มใช้ตั้งแต่วันที่"
-            hint="ชุดเดิมยังใช้กับล็อตที่ปิดไปแล้วเสมอ (BR23)"
+            hint="ชุดเดิมยังใช้กับล็อตที่ปิดไปแล้วเสมอ"
           >
             <input
               type="date"

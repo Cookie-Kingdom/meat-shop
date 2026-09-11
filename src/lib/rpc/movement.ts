@@ -31,15 +31,13 @@ export function newFormKey(): string {
 }
 
 export type RpcResult =
-  | { ok: true; id: string }
-  | { ok: false; code: string; message: string };
+  { ok: true; id: string } | { ok: false; code: string; message: string };
 
 const MIXED_UP =
   "รายการนี้บันทึกไปแล้วด้วยข้อมูลอื่น — โหลดหน้าใหม่แล้วตรวจยอดก่อนทำรายการอีกครั้ง";
 const CONFIG_BROKEN =
   "ค่าตั้งต้นที่รายการนี้ใช้มีรูปแบบไม่ถูกต้อง — ตรวจที่หน้า OW 10 ตั้งค่าระบบ";
-const BRANCH_FROM_CENTRAL_ONLY =
-  "ของจะเข้าสาขาได้ต้องออกจากคลังกลางเท่านั้น (BR11)";
+const BRANCH_FROM_CENTRAL_ONLY = "ของจะเข้าสาขาได้ต้องออกจากคลังกลางเท่านั้น";
 
 /** The named raises of the three functions and of everything they call, in Thai. */
 const MESSAGES: Record<string, string> = {
@@ -55,15 +53,15 @@ const MESSAGES: Record<string, string> = {
   CONFIG_VALUE_INVALID: CONFIG_BROKEN,
   LOT_NOT_FOUND: "ไม่พบ Lot นี้ในระบบ",
   LOCATION_NOT_FOUND: "ไม่พบสถานที่นี้ในระบบ",
-  INSUFFICIENT_STOCK: "สต็อกไม่พอ — ระบบไม่ยอมให้ยอดติดลบ (BR24)",
+  INSUFFICIENT_STOCK: "สต็อกไม่พอ — ระบบไม่ยอมให้ยอดติดลบ",
 
   // OW 05 — fn_set_return_pickup_date
   LOT_NOT_CLOSED:
-    "Lot นี้ยังไม่ปิด — นัดวันรับขากลับได้หลังเชียงใหม่ปิด Lot แล้วเท่านั้น (BR17)",
+    "Lot นี้ยังไม่ปิด — นัดวันรับขากลับได้หลังเชียงใหม่ปิด Lot แล้วเท่านั้น",
   RETURN_PICKUP_DATE_REQUIRED: "ต้องระบุวันรับของขากลับ",
   RETURN_PICKUP_DATE_INVALID: "วันรับของต้องไม่ก่อนวันที่ปิด Lot",
   RETURN_ALREADY_DISPATCHED:
-    "Lot นี้ขึ้นรถขากลับแล้ว เปลี่ยนวันรับไม่ได้ เพราะรอบรถสร้างตามวันเดิม (R29)",
+    "Lot นี้ขึ้นรถขากลับแล้ว เปลี่ยนวันรับไม่ได้ เพราะรอบรถสร้างตามวันเดิม",
 
   // OW 06 — fn_confirm_central_intake → fn_confirm_transport_receipt
   LINE_NOT_FOUND: "ไม่พบรายการขนส่งนี้",
@@ -75,9 +73,8 @@ const MESSAGES: Record<string, string> = {
   LINE_ALREADY_RECEIVED:
     "รายการนี้รับเข้าคลังไปแล้ว — ยอดที่ยังค้างดูได้ในรายการรับไม่ครบ",
   PARTIAL_RECEIPT_NOT_ALLOWED:
-    "ระบบตั้งไว้ไม่ให้รับของไม่ครบ — น้ำหนักรับจริงน้อยกว่าที่ส่งออกจากเชียงใหม่ (D06)",
-  VARIANCE_REASON_REQUIRED:
-    "ส่วนต่างเกินเกณฑ์ — กรอกเหตุผลแล้วบันทึกต่อได้ (BR12)",
+    "ระบบตั้งไว้ไม่ให้รับของไม่ครบ — น้ำหนักรับจริงน้อยกว่าที่ส่งออกจากเชียงใหม่",
+  VARIANCE_REASON_REQUIRED: "ส่วนต่างเกินเกณฑ์ — กรอกเหตุผลแล้วบันทึกต่อได้",
 
   // OW 07 — fn_allocate_to_branch → fn_create_transport_run, fn_dispatch_transport_line
   LINE_IDEMPOTENCY_CONFLICT: MIXED_UP,
@@ -87,12 +84,12 @@ const MESSAGES: Record<string, string> = {
   SMOKE_GROUP_REQUIRED: "ต้องเลือกกลุ่มวันรมควันและ Lot ที่จะส่ง",
   NOT_A_BRANCH: "ปลายทางที่เลือกไม่ใช่สาขา",
   NOT_IN_CENTRAL_STOCK:
-    "กลุ่มนี้ไม่มีของแช่แข็งในคลังกลางแล้ว — ส่งสาขาได้เฉพาะของที่รับเข้าคลังกลางแล้ว (BR11)",
+    "กลุ่มนี้ไม่มีของแช่แข็งในคลังกลางแล้ว — ส่งสาขาได้เฉพาะของที่รับเข้าคลังกลางแล้ว",
   INSUFFICIENT_CENTRAL_STOCK: "น้ำหนักที่ขอมากกว่ายอดในคลังกลางของ Lot นี้",
   FIFO_OVERRIDE_REASON_REQUIRED:
-    "คลังกลางยังมีวันรมควันที่เก่ากว่า — ต้องกรอกเหตุผลที่ข้าม FIFO (BR07)",
-  RUN_FARE_INVALID: "รอบรถส่งสาขาต้องไม่มีค่าขนส่ง (R25)",
-  BRANCH_LEG_NOT_FREE: "รอบรถส่งสาขาต้องไม่มีค่าขนส่ง (R25)",
+    "คลังกลางยังมีวันรมควันที่เก่ากว่า — ต้องกรอกเหตุผลที่ข้าม FIFO",
+  RUN_FARE_INVALID: "รอบรถส่งสาขาต้องไม่มีค่าขนส่ง",
+  BRANCH_LEG_NOT_FREE: "รอบรถส่งสาขาต้องไม่มีค่าขนส่ง",
   BRANCH_LEG_ROUTE_INVALID: BRANCH_FROM_CENTRAL_ONLY,
   BRANCH_LEG_ORIGIN_INVALID: BRANCH_FROM_CENTRAL_ONLY,
 };

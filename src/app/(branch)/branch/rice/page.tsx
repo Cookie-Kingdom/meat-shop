@@ -37,10 +37,15 @@ export default async function BranchRice(props: PageProps<"/branch/rice">) {
   if (!branch) return <NoBranch error={day.error} />;
   const report = day.report;
 
-  const rice = report ? await readRiceDay(day.supabase, report.id) : { row: null, error: null };
+  const rice = report
+    ? await readRiceDay(day.supabase, report.id)
+    : { row: null, error: null };
   const row = rice.row;
   const model = row?.model ?? branch.rice_model;
-  const here = new URLSearchParams({ location: branch.id, date: day.date }).toString();
+  const here = new URLSearchParams({
+    location: branch.id,
+    date: day.date,
+  }).toString();
   const err = one(params.err);
   const value = (name: keyof NonNullable<typeof row>) =>
     one(params[name]) || asField(row?.[name] as number | null | undefined);
@@ -62,9 +67,13 @@ export default async function BranchRice(props: PageProps<"/branch/rice">) {
         params={{ location: branch.id }}
       />
 
-      {one(params.saved) === "rice" ? <Notice tone="success">บันทึกข้าวเหนียวแล้ว</Notice> : null}
+      {one(params.saved) === "rice" ? (
+        <Notice tone="success">บันทึกข้าวเหนียวแล้ว</Notice>
+      ) : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
-      {rice.error ? <Notice tone="danger">อ่านข้อมูลข้าวไม่สำเร็จ — {rice.error}</Notice> : null}
+      {rice.error ? (
+        <Notice tone="danger">อ่านข้อมูลข้าวไม่สำเร็จ — {rice.error}</Notice>
+      ) : null}
 
       {!report ? (
         <Notice tone="warning">
@@ -76,12 +85,18 @@ export default async function BranchRice(props: PageProps<"/branch/rice">) {
       ) : (
         <>
           {report.status === "CLOSED" ? (
-            <ClosedDayNotice db={day.supabase} reportId={report.id} date={day.date} />
+            <ClosedDayNotice
+              db={day.supabase}
+              reportId={report.id}
+              date={day.date}
+            />
           ) : null}
 
           <section className="flex items-baseline justify-between gap-3 rounded-lg border border-border bg-surface p-4">
-            <span className="text-label text-text-secondary">ข้าวสุกยกมาจากวันก่อน</span>
-            <span className="font-mono text-num-md tabular-nums text-text-primary">
+            <span className="text-label text-text-secondary">
+              ข้าวสุกยกมาจากวันก่อน
+            </span>
+            <span className="font-mono text-num-md text-text-primary tabular-nums">
               {row?.carried_in_cooked_kg == null
                 ? "ยังไม่มีข้อมูล"
                 : `${formatKg(row.carried_in_cooked_kg)} กก.`}
@@ -90,7 +105,8 @@ export default async function BranchRice(props: PageProps<"/branch/rice">) {
 
           {model === null ? (
             <Notice tone="warning">
-              เจ้าของร้านยังไม่ได้ตั้งรูปแบบข้าวเหนียวของสาขานี้ — แจ้งเจ้าของร้านก่อน จึงบันทึกข้าวได้
+              เจ้าของร้านยังไม่ได้ตั้งรูปแบบข้าวเหนียวของสาขานี้ —
+              แจ้งเจ้าของร้านก่อน จึงบันทึกข้าวได้
             </Notice>
           ) : (
             <form
@@ -127,7 +143,8 @@ export default async function BranchRice(props: PageProps<"/branch/rice">) {
                 </>
               )}
               <p className="text-caption text-text-muted">
-                ข้าวสุกคงเหลือตอนเย็นบันทึกที่หน้าเช็ควัสดุ — ช่องที่เว้นว่างไม่ถูกบันทึก
+                ข้าวสุกคงเหลือตอนเย็นบันทึกที่หน้าเช็ควัสดุ —
+                ช่องที่เว้นว่างไม่ถูกบันทึก
               </p>
               <SubmitButton>บันทึกข้าวเหนียว</SubmitButton>
             </form>

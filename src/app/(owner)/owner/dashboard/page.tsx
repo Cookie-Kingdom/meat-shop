@@ -630,7 +630,7 @@ export default async function DashboardPage(
 
       <section className="flex flex-col gap-3">
         <h2 className="text-h2 text-text-primary">ค่าใช้จ่ายของเจ้าของ</h2>
-        <ScopeNote>{OWNER_MEMO_SCOPE_TH} (M11)</ScopeNote>
+        <ScopeNote>{OWNER_MEMO_SCOPE_TH}</ScopeNote>
         {memoLines.length === 0 ? (
           <p className="text-body-sm text-text-secondary">
             ไม่มีค่าใช้จ่ายของเจ้าของในช่วงนี้
@@ -653,7 +653,7 @@ export default async function DashboardPage(
           </dl>
         )}
         <Link href="/owner/expenses" className={actionLink}>
-          OW 09 · ดูรายการค่าใช้จ่าย →
+          ดูรายการค่าใช้จ่าย →
         </Link>
       </section>
 

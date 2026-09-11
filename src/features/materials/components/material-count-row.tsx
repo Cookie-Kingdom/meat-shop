@@ -26,7 +26,9 @@ const badge = cva("shrink-0 rounded-full px-2 py-0.5 text-caption", {
 });
 
 const qty = (n: number | null) =>
-  n === null ? "—" : Number(n).toLocaleString("th-TH", { maximumFractionDigits: 2 });
+  n === null
+    ? "—"
+    : Number(n).toLocaleString("th-TH", { maximumFractionDigits: 2 });
 
 export function MaterialCountRow({
   row,
@@ -43,7 +45,8 @@ export function MaterialCountRow({
   countedToday: boolean;
   showNotConfigured: boolean;
 }) {
-  const tone = row.is_low === true ? "low" : row.is_low === false ? "ok" : "unknown";
+  const tone =
+    row.is_low === true ? "low" : row.is_low === false ? "ok" : "unknown";
   const state =
     row.is_low === true
       ? `ใกล้หมด · เหลือ ${qty(row.remaining_qty)}`
@@ -54,7 +57,7 @@ export function MaterialCountRow({
   return (
     <div className="flex flex-col gap-2 border-b border-border px-4 py-3 last:border-b-0">
       <div className="flex items-start justify-between gap-2">
-        <span className="min-w-0 flex-1 break-words text-body text-text-primary">
+        <span className="min-w-0 flex-1 text-body break-words text-text-primary">
           {row.name_th}
         </span>
         {countedToday ? <span className={badge({ tone })}>{state}</span> : null}

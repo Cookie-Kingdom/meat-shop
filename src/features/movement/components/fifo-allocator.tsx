@@ -120,7 +120,9 @@ export function FifoAllocator({
         className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4"
       >
         <span className="flex items-baseline justify-between gap-2">
-          <span className="text-body-sm text-text-secondary">คงเหลือในคลังกลาง</span>
+          <span className="text-body-sm text-text-secondary">
+            คงเหลือในคลังกลาง
+          </span>
           <span className="text-num-md text-text-primary tabular-nums">
             {kg(totalH / 100)} กก.
           </span>
@@ -162,11 +164,15 @@ export function FifoAllocator({
                   type="radio"
                   name="smoke_date_group_id"
                   value={r.smoke_date_group_id}
-                  checked={selected?.smoke_date_group_id === r.smoke_date_group_id}
+                  checked={
+                    selected?.smoke_date_group_id === r.smoke_date_group_id
+                  }
                   onChange={() => pick(r)}
                   className="size-5 shrink-0 accent-accent"
                 />
-                <span className="text-body text-text-primary">Lot {r.lot_code}</span>
+                <span className="text-body text-text-primary">
+                  Lot {r.lot_code}
+                </span>
                 <span className="ml-auto text-body text-text-primary tabular-nums">
                   {kg(r.available_qty)} กก.
                 </span>
@@ -184,7 +190,7 @@ export function FifoAllocator({
           id="fifo-reason"
           name="fifo_override_reason"
           label="เหตุผลที่ข้าม FIFO"
-          trigger={`คลังกลางยังมีของรมควันวันที่ ${thaiDate(oldest)} ซึ่งเก่ากว่า — ส่งวันที่ใหม่กว่าก่อนต้องบอกเหตุผล (BR07)`}
+          trigger={`คลังกลางยังมีของรมควันวันที่ ${thaiDate(oldest)} ซึ่งเก่ากว่า — ส่งวันที่ใหม่กว่าก่อนต้องบอกเหตุผล`}
           value={reason}
           onChange={setReason}
           required
@@ -232,7 +238,7 @@ export function FifoAllocator({
         invalid={overAvailable || (weight !== "" && actual === null)}
         helper={
           overAvailable
-            ? "มากกว่ายอดในคลังกลาง — ส่งเกินที่มีไม่ได้ (BR24)"
+            ? "มากกว่ายอดในคลังกลาง — ส่งเกินที่มีไม่ได้"
             : undefined
         }
       />
@@ -244,7 +250,7 @@ export function FifoAllocator({
         unit="ถุง"
         value={bags}
         onChange={setBags}
-        hint="ถุงที่ขึ้นรถจริง สาขาจะนับเทียบตอนรับของ (BR 02)"
+        hint="ถุงที่ขึ้นรถจริง สาขาจะนับเทียบตอนรับของ"
       />
 
       <ActionBar>

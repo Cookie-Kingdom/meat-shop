@@ -42,7 +42,10 @@ export async function readRiceDay(db: Db, reportId: string) {
     )
     .eq("daily_report_id", reportId)
     .maybeSingle();
-  return { row: (data ?? null) as RiceDay | null, error: error?.message ?? null };
+  return {
+    row: (data ?? null) as RiceDay | null,
+    error: error?.message ?? null,
+  };
 }
 
 export async function readMaterials(db: Db, locationId: string) {

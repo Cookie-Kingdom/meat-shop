@@ -24,7 +24,10 @@ import {
 
 /** Field name prefix → SKU. Meat fields are `box:<lot>:<group>` / `addon:<lot>:<group>`: two SKUs,
  * never one field (D03.1, UAT-16), one row per lot (D05). */
-const SALE_FIELDS: Record<string, { code: string; meat: boolean; whole: boolean }> = {
+const SALE_FIELDS: Record<
+  string,
+  { code: string; meat: boolean; whole: boolean }
+> = {
   box: { code: SKU.box, meat: true, whole: true },
   addon: { code: SKU.addon, meat: true, whole: true },
   chilli: { code: SKU.chilli, meat: false, whole: true },
@@ -54,14 +57,24 @@ export async function submitSales(form: FormData) {
     if (qty === 0) continue; // a typed 0 is "none sold", which is no line
     lines.push(
       field.meat
-        ? { product_code: field.code, qty, lot_id: lotId, smoke_date_group_id: groupId }
+        ? {
+            product_code: field.code,
+            qty,
+            lot_id: lotId,
+            smoke_date_group_id: groupId,
+          }
         : { product_code: field.code, qty },
     );
   }
 
   if (bad) redirect(withParams(to, { ...keep, err: bad }));
   if (lines.length === 0) {
-    redirect(withParams(to, { ...keep, err: "ยังไม่ได้กรอกยอดขาย — กรอกจำนวนอย่างน้อยหนึ่งช่อง" }));
+    redirect(
+      withParams(to, {
+        ...keep,
+        err: "ยังไม่ได้กรอกยอดขาย — กรอกจำนวนอย่างน้อยหนึ่งช่อง",
+      }),
+    );
   }
 
   const result = await recordSales({
@@ -71,7 +84,10 @@ export async function submitSales(form: FormData) {
   });
   revalidatePath("/branch", "layout");
   redirect(
-    withParams(to, result.ok ? { saved: "sales" } : { ...keep, err: result.message }),
+    withParams(
+      to,
+      result.ok ? { saved: "sales" } : { ...keep, err: result.message },
+    ),
   );
 }
 
@@ -86,7 +102,9 @@ export async function submitWaste(form: FormData) {
   const keep = { waste_pick: pick, waste_kg: kgRaw, waste_reason: reason };
 
   if (!lotId || !groupId) {
-    redirect(withParams(to, { ...keep, err: "เลือกล็อตที่จะบันทึก Waste ก่อน" }));
+    redirect(
+      withParams(to, { ...keep, err: "เลือกล็อตที่จะบันทึก Waste ก่อน" }),
+    );
   }
   const kg = num(kgRaw);
   if (kg === null) {
@@ -105,7 +123,10 @@ export async function submitWaste(form: FormData) {
   });
   revalidatePath("/branch", "layout");
   redirect(
-    withParams(to, result.ok ? { saved: "waste" } : { ...keep, err: result.message }),
+    withParams(
+      to,
+      result.ok ? { saved: "waste" } : { ...keep, err: result.message },
+    ),
   );
 }
 

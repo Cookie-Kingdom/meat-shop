@@ -14,16 +14,19 @@ import { largestFirst, type DiffRow, type ReadyLot } from "../queries";
  * The copy stays neutral on Open Question 6: it never suggests writing the remainder off to
  * make the number fit. */
 
-const panel = cva("sticky top-0 z-10 flex flex-col gap-2 rounded-lg border p-3 text-body-sm", {
-  variants: {
-    tone: {
-      danger: "border-danger bg-danger-subtle",
-      warning: "border-warning bg-warning-subtle",
-      success: "border-success bg-success-subtle",
-      neutral: "border-border bg-surface",
+const panel = cva(
+  "sticky top-0 z-10 flex flex-col gap-2 rounded-lg border p-3 text-body-sm",
+  {
+    variants: {
+      tone: {
+        danger: "border-danger bg-danger-subtle",
+        warning: "border-warning bg-warning-subtle",
+        success: "border-success bg-success-subtle",
+        neutral: "border-border bg-surface",
+      },
     },
   },
-});
+);
 
 export function DiffPanel({
   diff,
@@ -64,21 +67,31 @@ export function DiffPanel({
           : "Diff เป็นศูนย์ — เนื้อที่ละลายวันนี้มียอดขายหรือ Waste รองรับครบแล้ว";
 
   return (
-    <section aria-live="polite" aria-labelledby="diff-title" className={panel({ tone })}>
+    <section
+      aria-live="polite"
+      aria-labelledby="diff-title"
+      className={panel({ tone })}
+    >
       <h2 id="diff-title" className="text-label text-text-primary">
         Diff วันนี้ (จากยอดที่บันทึกแล้ว)
       </h2>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 tabular-nums text-text-primary">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-text-primary tabular-nums">
         <dt className="text-text-secondary">ละลายพร้อมขาย</dt>
-        <dd className="text-right font-mono">{formatKg(diff.ready_in_kg)} กก.</dd>
-        <dt className="text-text-secondary">ขาย {Number(diff.sold_pack_qty)} ซอง</dt>
+        <dd className="text-right font-mono">
+          {formatKg(diff.ready_in_kg)} กก.
+        </dd>
+        <dt className="text-text-secondary">
+          ขาย {Number(diff.sold_pack_qty)} ซอง
+        </dt>
         <dd className="text-right font-mono">{formatKg(diff.sold_kg)} กก.</dd>
         <dt className="text-text-secondary">Waste</dt>
         <dd className="text-right font-mono">{formatKg(diff.wasted_kg)} กก.</dd>
         <dt className="text-label">Diff</dt>
         <dd className="text-right font-mono text-label">
           {formatKg(diff.diff_kg)} กก.
-          {diff.variance_pct === null ? "" : ` · ${formatKg(diff.variance_pct)}%`}
+          {diff.variance_pct === null
+            ? ""
+            : ` · ${formatKg(diff.variance_pct)}%`}
         </dd>
       </dl>
       <p className="text-text-primary">{message}</p>

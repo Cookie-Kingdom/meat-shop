@@ -65,7 +65,9 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
   const [frozenRes, tupleRes] = await Promise.all([
     day.supabase
       .from("v_branch_frozen_available")
-      .select("smoke_date, smoke_date_group_id, lot_id, lot_code, available_qty")
+      .select(
+        "smoke_date, smoke_date_group_id, lot_id, lot_code, available_qty",
+      )
       .eq("location_id", branch.id)
       .order("smoke_date")
       .order("lot_code"),
@@ -84,7 +86,9 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
   const dates = [...new Set(rows.map((r) => r.smoke_date))]; // the view's order: oldest first
   const oldest = dates[0] ?? null;
   const pick = one(params.pick);
-  const picked = rows.find((r) => `${r.lot_id}:${r.smoke_date_group_id}` === pick);
+  const picked = rows.find(
+    (r) => `${r.lot_id}:${r.smoke_date_group_id}` === pick,
+  );
   const sd = one(params.sd);
   const selected = dates.includes(sd) ? sd : (picked?.smoke_date ?? oldest);
   const lots = rows.filter((r) => r.smoke_date === selected);
@@ -97,8 +101,10 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
   const err = one(params.err);
 
   // Absent from the view means a zero balance (it offers positive balances only).
-  const frozenNow = tuple.find((t) => t.stock_state === "FROZEN")?.available_qty ?? 0;
-  const readyNow = tuple.find((t) => t.stock_state === "READY")?.available_qty ?? 0;
+  const frozenNow =
+    tuple.find((t) => t.stock_state === "FROZEN")?.available_qty ?? 0;
+  const readyNow =
+    tuple.find((t) => t.stock_state === "READY")?.available_qty ?? 0;
   const lotCode = tuple[0]?.lot_code;
 
   return (
@@ -123,7 +129,8 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
           className="flex flex-col gap-2 rounded-lg border border-success bg-surface p-3"
         >
           <p className="text-body text-text-primary">
-            ละลาย {one(params.kg)} กก.{lotCode ? ` จากล็อต ${lotCode}` : ""} แล้ว — ยอดของล็อตนี้ตอนนี้
+            ละลาย {one(params.kg)} กก.{lotCode ? ` จากล็อต ${lotCode}` : ""}{" "}
+            แล้ว — ยอดของล็อตนี้ตอนนี้
           </p>
           <div className="flex flex-wrap gap-2">
             <StockStateBadge state="frozen" weightKg={frozenNow} />
@@ -133,13 +140,16 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
       ) : null}
       {err ? <Notice tone="danger">{err}</Notice> : null}
       {frozenRes.error ? (
-        <Notice tone="danger">อ่านสต็อกแช่แข็งไม่สำเร็จ — {frozenRes.error.message}</Notice>
+        <Notice tone="danger">
+          อ่านสต็อกแช่แข็งไม่สำเร็จ — {frozenRes.error.message}
+        </Notice>
       ) : null}
 
       {report?.status === "CLOSED" ? (
         <Notice tone="locked">
-          วันที่ {thaiDate(day.date)} ปิดแล้ว — บันทึกได้เฉพาะเมื่อเจ้าของร้านอนุมัติปลดล็อกวันนี้
-          และยังไม่หมดเวลา ถ้ายังไม่ได้อนุมัติ ระบบจะไม่รับรายการ
+          วันที่ {thaiDate(day.date)} ปิดแล้ว —
+          บันทึกได้เฉพาะเมื่อเจ้าของร้านอนุมัติปลดล็อกวันนี้ และยังไม่หมดเวลา
+          ถ้ายังไม่ได้อนุมัติ ระบบจะไม่รับรายการ
         </Notice>
       ) : null}
       {!report ? (
@@ -174,7 +184,9 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
                   key={d}
                   smokeDate={d}
                   lotCount={inDate.length}
-                  singleLotKg={inDate.length === 1 ? inDate[0].available_qty : null}
+                  singleLotKg={
+                    inDate.length === 1 ? inDate[0].available_qty : null
+                  }
                   isOldest={d === oldest}
                   selected={d === selected}
                   href={`/branch/thaw?${qs({ sd: d })}`}
@@ -205,12 +217,18 @@ export default async function BranchThaw(props: PageProps<"/branch/thaw">) {
                       className="size-5 shrink-0"
                     />
                     <span className="flex flex-1 flex-col">
-                      <span className="text-body text-text-primary">ล็อต {r.lot_code}</span>
+                      <span className="text-body text-text-primary">
+                        ล็อต {r.lot_code}
+                      </span>
                       <span className="text-caption text-text-muted">
                         รมควัน {thaiDate(r.smoke_date)}
                       </span>
                     </span>
-                    <StockStateBadge state="frozen" weightKg={r.available_qty} size="sm" />
+                    <StockStateBadge
+                      state="frozen"
+                      weightKg={r.available_qty}
+                      size="sm"
+                    />
                   </label>
                 );
               })}

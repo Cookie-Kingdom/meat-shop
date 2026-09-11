@@ -53,11 +53,16 @@ export function ReceiveSheet({
 
   if (place?.kind !== "CENTRAL" || line.received_weight_kg !== null) {
     return (
-      <Sheet title={title} subtitle={subtitle} closeHref={closeHref} closeLabel="ปิด">
+      <Sheet
+        title={title}
+        subtitle={subtitle}
+        closeHref={closeHref}
+        closeLabel="ปิด"
+      >
         <p className="text-body text-text-secondary">
           {line.received_weight_kg !== null
-            ? "รายการนี้ยืนยันรับไปแล้ว ส่วนที่ขาดค้างอยู่บนรถจนกว่าจะปิดส่วนต่าง (D06)"
-            : "รายการนี้ผู้ดูแลปลายทางเป็นผู้ยืนยันรับ — เชียงใหม่ที่ CM 02 หรือสาขาที่ BR 02 (ADR-004)"}
+            ? "รายการนี้ยืนยันรับไปแล้ว ส่วนที่ขาดค้างอยู่บนรถจนกว่าจะปิดส่วนต่าง"
+            : "รายการนี้ผู้ดูแลปลายทางเป็นผู้ยืนยันรับ — เชฟเฮาส์เชียงใหม่ หรือแอดมินสาขา"}
         </p>
       </Sheet>
     );
@@ -95,7 +100,7 @@ export function ReceiveSheet({
 
         <SubmitBar
           label="ยืนยันรับของ"
-          note="ถ้ารับไม่ครบ ส่วนที่ขาดค้างอยู่บนรถ ไม่ถูกตัดทิ้ง (D06)"
+          note="ถ้ารับไม่ครบ ส่วนที่ขาดค้างอยู่บนรถ ไม่ถูกตัดทิ้ง"
         />
       </form>
     </Sheet>

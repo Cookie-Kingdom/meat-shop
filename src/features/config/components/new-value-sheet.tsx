@@ -159,7 +159,7 @@ export function NewValueSheet({
     return (
       <Sheet
         title={`ตั้งราคาใหม่ · ${named(itemKey)}`}
-        subtitle="ราคาขายบังคับ ต้นทุนเว้นว่างได้เมื่อต้นทุนมาจากล็อต (R30)"
+        subtitle="ราคาขายบังคับ ต้นทุนเว้นว่างได้เมื่อต้นทุนมาจากล็อต"
         closeHref={closeHref}
       >
         <form action={submitProductPrice} className="grid gap-3 sm:grid-cols-2">
@@ -198,7 +198,7 @@ export function NewValueSheet({
     return (
       <Sheet
         title={`ตั้งสต๊อกเต็มใหม่ · ${named(itemKey)}`}
-        subtitle="ต้องมากกว่า 0 — “ยังไม่กำหนด” คือไม่มีแถว ไม่ใช่ 0 (R9)"
+        subtitle="ต้องมากกว่า 0 — “ยังไม่กำหนด” คือไม่มีแถว ไม่ใช่ 0"
         closeHref={closeHref}
       >
         <form action={submitFullStock} className="grid gap-3 sm:grid-cols-2">
@@ -255,8 +255,7 @@ export function NewValueSheet({
     >
       {meta.deferred ? (
         <p className="rounded-md border border-border bg-surface-sunken p-3 text-caption text-text-secondary">
-          รอบนี้ยังไม่มีรายงานไหนอ่านค่านี้ (D04) กรอกไว้ได้
-          แต่ยังไม่มีผลกับตัวเลขใด
+          รอบนี้ยังไม่มีรายงานไหนอ่านค่านี้ กรอกไว้ได้ แต่ยังไม่มีผลกับตัวเลขใด
         </p>
       ) : null}
 

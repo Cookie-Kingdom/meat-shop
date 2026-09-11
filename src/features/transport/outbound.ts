@@ -27,14 +27,19 @@ export type TripKind = "ONE_WAY" | "ROUND_TRIP";
 
 export const TRIP_KINDS: { value: TripKind; label: string }[] = [
   { value: "ONE_WAY", label: "เที่ยวเดียว" },
-  { value: "ROUND_TRIP", label: "ไป-กลับ (รถคันเดียวกัน คิดค่าเที่ยวครั้งเดียว)" },
+  {
+    value: "ROUND_TRIP",
+    label: "ไป-กลับ (รถคันเดียวกัน คิดค่าเที่ยวครั้งเดียว)",
+  },
 ];
 
 export function tripKind(raw: string): TripKind | null {
   return raw === "ONE_WAY" || raw === "ROUND_TRIP" ? raw : null;
 }
 
-export function allocMethod(raw: string | null | undefined): AllocMethod | null {
+export function allocMethod(
+  raw: string | null | undefined,
+): AllocMethod | null {
   return raw === "BY_LOT_WEIGHT" || raw === "EQUAL_SPLIT" || raw === "MANUAL"
     ? raw
     : null;
@@ -43,7 +48,8 @@ export function allocMethod(raw: string | null | undefined): AllocMethod | null 
 export type FareTable = Map<string, Partial<Record<TripKind, bigint>>>;
 
 function money(v: unknown): bigint | null {
-  if (typeof v === "number") return Number.isFinite(v) ? toHundredths(String(v)) : null;
+  if (typeof v === "number")
+    return Number.isFinite(v) ? toHundredths(String(v)) : null;
   if (typeof v === "string") return toHundredths(v);
   return null;
 }
@@ -53,7 +59,9 @@ function money(v: unknown): bigint | null {
 export function parseFareTable(json: unknown): FareTable | null {
   if (!json || typeof json !== "object" || Array.isArray(json)) return null;
   const table: FareTable = new Map();
-  for (const [vehicle, trips] of Object.entries(json as Record<string, unknown>)) {
+  for (const [vehicle, trips] of Object.entries(
+    json as Record<string, unknown>,
+  )) {
     if (!trips || typeof trips !== "object" || Array.isArray(trips)) continue;
     const row: Partial<Record<TripKind, bigint>> = {};
     for (const { value } of TRIP_KINDS) {
@@ -99,7 +107,13 @@ export function previewSplit(
 
   // The remainder's home: heaviest line, ties by the smallest id (the function uses line id).
   const heaviest = [...shares].sort((a, b) =>
-    a.weight === b.weight ? (a.id < b.id ? -1 : 1) : a.weight > b.weight ? -1 : 1,
+    a.weight === b.weight
+      ? a.id < b.id
+        ? -1
+        : 1
+      : a.weight > b.weight
+        ? -1
+        : 1,
   )[0];
   heaviest.share += fare - allocated;
 
